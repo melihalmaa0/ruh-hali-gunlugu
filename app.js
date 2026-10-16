@@ -1,4 +1,4 @@
-/* Ruh Hali Günlüğü — bağımlılıksız, tek dosyalık uygulama mantığı. */
+/* Pip · Ruh Hali Günlüğü — bağımlılıksız, tek dosyalık uygulama mantığı. */
 'use strict';
 
 /* =========================================================
@@ -345,7 +345,7 @@ function generateSampleEntries(today = startOfToday(), { hard = false } = {}) {
 }
 
 /* =========================================================
-   Filiz (maskot) — ruh hali 1..5 arasında sürekli değerle çizilir
+   Pip (maskot) — ruh hali 1..5 arasında sürekli değerle çizilir
    ========================================================= */
 
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -367,21 +367,21 @@ function moodColorAt(v) {
   return `rgb(${a.map((x, k) => Math.round(lerp(x, b[k], t))).join(',')})`;
 }
 
-const FILIZ_IDLE = '#DCC9B0'; // Seçim öncesi sıcak kum tonu; zeminden belirgin ayrışır
-const FILIZ_INK = '#2A302B';
+const PIP_IDLE = '#DCC9B0'; // Seçim öncesi sıcak kum tonu; zeminden belirgin ayrışır
+const PIP_INK = '#2A302B';
 const LEAF = '#6FA58A';
 const LEAF_DARK = '#5A8F76';
 
 /** Seriye göre büyüme: 1 yaprak → 7 günde 2 yaprak → 21 günde çiçek. */
-const filizStage = (streak) => (streak >= 21 ? 3 : streak >= 7 ? 2 : 1);
+const pipStage = (streak) => (streak >= 21 ? 3 : streak >= 7 ? 2 : 1);
 
-function filizParams(raw, chosen) {
+function pipParams(raw, chosen) {
   const v = clamp(raw, 1, 5);
   const c = interp([-3.5, -1.8, 0, 2.4, 4.2], v);      // ağız eğriliği
   const w = interp([5.5, 5.5, 5.5, 5.5, 6.5], v);      // ağız genişliği
   const f = (n) => n.toFixed(2);
   return {
-    color: chosen ? moodColorAt(v) : FILIZ_IDLE,
+    color: chosen ? moodColorAt(v) : PIP_IDLE,
     mouth: `M${f(50 - w)} ${f(69 - c / 2)} Q50 ${f(69 + c)} ${f(50 + w)} ${f(69 - c / 2)}`,
     dots: 1 - clamp(v - 4, 0, 1),                      // nokta gözler → gülen gözler
     arcs: clamp(v - 4, 0, 1),
@@ -392,7 +392,7 @@ function filizParams(raw, chosen) {
   };
 }
 
-function filizFlower(cx, cy, r) {
+function pipFlower(cx, cy, r) {
   const petals = Array.from({ length: 5 }, (_, i) => {
     const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
     return `<circle cx="${(cx + Math.cos(a) * r).toFixed(2)}" cy="${(cy + Math.sin(a) * r).toFixed(2)}" r="${(r * 0.85).toFixed(2)}" fill="#F2BFA8"/>`;
@@ -400,25 +400,25 @@ function filizFlower(cx, cy, r) {
   return `${petals}<circle cx="${cx}" cy="${cy}" r="${(r * 0.7).toFixed(2)}" fill="#E8C46A"/>`;
 }
 
-function filizSvg(v = 3, { chosen = true, stage = 1, cls = '' } = {}) {
-  const p = filizParams(v, chosen);
+function pipSvg(v = 3, { chosen = true, stage = 1, cls = '' } = {}) {
+  const p = pipParams(v, chosen);
   const leafR = `<path d="M50 24 C53 13 63 8 73 10 C71 20 62 26 50 24Z" fill="${LEAF}"/>`;
   const leafL = `<path d="M50 26 C47 16 38 12 29 14 C31 23 39 28 50 26Z" fill="${LEAF_DARK}"/>`;
   return `
-    <svg class="filiz ${cls}" viewBox="0 0 100 100" aria-hidden="true">
+    <svg class="pip ${cls}" viewBox="0 0 100 100" aria-hidden="true">
       <ellipse cx="50" cy="93" rx="26" ry="3.2" fill="rgba(74,60,40,.13)"/>
       <g data-part="figure" transform="translate(0 ${p.lift.toFixed(2)})">
         <g data-part="sprout" transform="rotate(${p.sprout.toFixed(2)} 50 32)">
           <path d="M50 34 Q49 28 50 22" stroke="${LEAF_DARK}" stroke-width="2.4" fill="none" stroke-linecap="round"/>
-          ${stage >= 2 ? leafL : ''}${leafR}${stage >= 3 ? filizFlower(50, 15, 4.2) : ''}
+          ${stage >= 2 ? leafL : ''}${leafR}${stage >= 3 ? pipFlower(50, 15, 4.2) : ''}
         </g>
         <g class="f-body">
           <path data-part="skin" d="M50 32 C71 32 83 47 83 64 C83 81 69 91 50 91 C31 91 17 81 17 64 C17 47 29 32 50 32Z" fill="${p.color}"/>
           <ellipse cx="38" cy="46" rx="9" ry="5" fill="#fff" opacity=".22" transform="rotate(-25 38 46)"/>
-          <g opacity=".88" fill="none" stroke="${FILIZ_INK}" stroke-width="1.8" stroke-linecap="round">
+          <g opacity=".88" fill="none" stroke="${PIP_INK}" stroke-width="1.8" stroke-linecap="round">
             <g data-part="blush" opacity="${p.blush}" stroke="none" fill="#E39A88"><ellipse cx="37" cy="66.5" rx="3.4" ry="2.1"/><ellipse cx="63" cy="66.5" rx="3.4" ry="2.1"/></g>
             <g data-part="brows" opacity="${p.brows}" stroke-width="1.6"><path d="M39 56 L45 54"/><path d="M61 56 L55 54"/></g>
-            <g data-part="dots" opacity="${p.dots}" stroke="none" fill="${FILIZ_INK}"><circle cx="42" cy="61" r="2.3"/><circle cx="58" cy="61" r="2.3"/></g>
+            <g data-part="dots" opacity="${p.dots}" stroke="none" fill="${PIP_INK}"><circle cx="42" cy="61" r="2.3"/><circle cx="58" cy="61" r="2.3"/></g>
             <g data-part="arcs" opacity="${p.arcs}"><path d="M39 62 Q42 58 45 62"/><path d="M55 62 Q58 58 61 62"/></g>
             <path data-part="mouth" d="${p.mouth}"/>
           </g>
@@ -427,9 +427,9 @@ function filizSvg(v = 3, { chosen = true, stage = 1, cls = '' } = {}) {
     </svg>`;
 }
 
-/** Var olan bir Filiz SVG'sini yeniden oluşturmadan günceller (animasyon için). */
-function paintFiliz(svg, raw, chosen) {
-  const p = filizParams(raw, chosen);
+/** Var olan bir Pip SVG'sini yeniden oluşturmadan günceller (animasyon için). */
+function paintPip(svg, raw, chosen) {
+  const p = pipParams(raw, chosen);
   const q = (name) => svg.querySelector(`[data-part="${name}"]`);
   q('figure').setAttribute('transform', `translate(0 ${p.lift.toFixed(2)})`);
   q('sprout').setAttribute('transform', `rotate(${p.sprout.toFixed(2)} 50 32)`);
@@ -556,7 +556,7 @@ if (typeof document !== 'undefined') {
       if (!state.entries[toKey(startOfToday())]) {
         const reg = await navigator.serviceWorker.ready;
         reg.showNotification('Bugün nasıldın?', {
-          body: 'Filiz seni bekliyor. 10 saniyelik kaydın yeter.',
+          body: 'Pip seni bekliyor. 10 saniyelik kaydın yeter.',
           icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', tag: 'daily-reminder',
         });
         analytics.track('reminder_fired', { channel: 'notification' });
@@ -576,7 +576,7 @@ if (typeof document !== 'undefined') {
       'BEGIN:VEVENT',
       `UID:hatirlatma-${ymd}-${h}${m}@ruh-hali-gunlugu`, `DTSTAMP:${stamp}`,
       `DTSTART:${ymd}T${h}${m}00`, 'DURATION:PT5M', 'RRULE:FREQ=DAILY',
-      'SUMMARY:Ruh Hali Günlüğü: bugün nasıldın?',
+      'SUMMARY:Pip: bugün nasıldın?',
       `DESCRIPTION:10 saniyelik kaydını yap: ${url}`, `URL:${url}`,
       'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Bugün nasıldın?', 'TRIGGER:PT0M', 'END:VALARM',
       'END:VEVENT', 'END:VCALENDAR',
@@ -728,7 +728,7 @@ if (typeof document !== 'undefined') {
     let hint = '';
     if (ui.editDate) hint = existing ? 'Değişiklikler bu günün kaydına işlenir.' : 'Bu gün için yeni kayıt ekliyorsun.';
     else if (existing) hint = `Bugün kaydedildi (${fmtTime(existing.updatedAt)}). Dilediğin zaman güncelleyebilirsin.`;
-    else if (!d.mood) hint = restedYesterday() ? 'Dün dinlenme günündü, serin bozulmadı. Filiz’i kaydırarak bugünü ekle.' : 'Kaydetmek için Filiz’i kaydırarak ruh halini seç.';
+    else if (!d.mood) hint = restedYesterday() ? 'Dün dinlenme günündü, serin bozulmadı. Pip’i kaydırarak bugünü ekle.' : 'Kaydetmek için Pip’i kaydırarak ruh halini seç.';
     else if (streak > 0) hint = `Kaydedersen serin ${streak + 1} güne çıkar.`;
     return {
       disabled: !d.mood || unchanged,
@@ -759,7 +759,7 @@ if (typeof document !== 'undefined') {
     if (note) note.placeholder = notePlaceholder();
   }
 
-  /* ---------- Filiz seçici (sürükle, bırak, yerine otursun) ---------- */
+  /* ---------- Pip seçici (sürükle, bırak, yerine otursun) ---------- */
 
   const STEP_PX = 44; // Bir ruh hali basamağı için gereken dikey sürükleme
   const picker = { cur: 3, target: 3, chosen: false, drag: null, raf: 0, lastStep: null };
@@ -775,7 +775,7 @@ if (typeof document !== 'undefined') {
   function paintPicker() {
     const root = $view.querySelector('.picker');
     if (!root) return;
-    const p = paintFiliz(root.querySelector('.filiz'), picker.cur, picker.chosen);
+    const p = paintPip(root.querySelector('.pip'), picker.cur, picker.chosen);
     const v = clamp(picker.cur, 1, 5);
     const step = Math.round(v);
 
@@ -847,17 +847,17 @@ if (typeof document !== 'undefined') {
          </span>`
       : `<span class="streak">Seriye bugün başla</span>`;
 
-    // Filiz'i yukarı/aşağı sürükleyerek ya da ölçekteki etiketlere dokunarak seçilir
+    // Pip'i yukarı/aşağı sürükleyerek ya da ölçekteki etiketlere dokunarak seçilir
     const stopsHtml = MOODS.map((m) => `
       <button class="stop" type="button" tabindex="-1" data-action="mood-set" data-value="${m.value}"
               style="top:${((5 - m.value) / 4) * 100}%" aria-label="${m.label}" title="${m.label}"></button>`).join('');
     const pickerHtml = `
       <div class="picker">
-        ${pnote('filiz', { corner: true })}
+        ${pnote('pip', { corner: true })}
         <div class="picker-stage" role="slider" tabindex="0" aria-label="Ruh hali"
              aria-valuemin="1" aria-valuemax="5" aria-valuenow="${d.mood || 3}" aria-valuetext="${d.mood ? moodOf(d.mood).label : 'Seçilmedi'}">
           <div class="picker-halo"></div>
-          ${filizSvg(d.mood || 3, { chosen: Boolean(d.mood), stage: filizStage(isPast ? computeStreak(state.entries, date) : streak) })}
+          ${pipSvg(d.mood || 3, { chosen: Boolean(d.mood), stage: pipStage(isPast ? computeStreak(state.entries, date) : streak) })}
         </div>
         <div class="scale">
           <span class="scale-end" aria-hidden="true">Harika</span>
@@ -999,7 +999,7 @@ if (typeof document !== 'undefined') {
           </article>`;
         }).join('')}</div>`
       : `<div class="card empty">
-          <div class="empty-filiz">${filizSvg(total < FIRST_INSIGHT_AT ? 3 : 4)}</div>
+          <div class="empty-pip">${pipSvg(total < FIRST_INSIGHT_AT ? 3 : 4)}</div>
           <h3>${total < FIRST_INSIGHT_AT ? 'İlk içgörün yolda' : 'Henüz belirgin bir örüntü yok'}</h3>
           <p>${total < FIRST_INSIGHT_AT
             ? `İlk içgörün ${FIRST_INSIGHT_AT}. kayıtta açılır. ${FIRST_INSIGHT_AT - total} kayıt kaldı.`
@@ -1117,7 +1117,7 @@ if (typeof document !== 'undefined') {
         ? `<ul class="entries">${recent.map((e) => entryCard(e)).join('')}</ul>
            ${remaining > 0 ? `<button class="btn btn-quiet btn-sm btn-block more-btn" data-action="more">Daha fazla göster (${remaining})</button>` : ''}`
         : `<div class="card empty">
-             <div class="empty-filiz">${filizSvg(3)}</div>
+             <div class="empty-pip">${pipSvg(3)}</div>
              <h3>Henüz kayıt yok</h3>
              <p>Bugün ekranından ilk kaydını ekleyebilir ya da örnek veriyle uygulamayı deneyebilirsin.</p>
              <button class="btn btn-ghost btn-sm" data-action="sample">Örnek veriyle dene</button>
@@ -1194,7 +1194,7 @@ if (typeof document !== 'undefined') {
       <h2 class="section-title">Gizlilik</h2>
       <section class="card settings-about">
         <p>Kayıtların yalnızca bu cihazda, bu tarayıcıda saklanır. Hesap yok, hiçbir sunucuya veri gönderilmez.</p>
-        <p class="muted small">Ruh Hali Günlüğü · Sürüm 1.1</p>
+        <p class="muted small">Pip · Ruh hali günlüğü · Sürüm 1.2</p>
       </section>`;
   }
 
@@ -1209,10 +1209,10 @@ if (typeof document !== 'undefined') {
   function renderWelcome() {
     return `
       <section class="welcome">
-        <div class="welcome-filiz">${filizSvg(5, { stage: 3 })}</div>
+        <div class="welcome-pip">${pipSvg(5, { stage: 3 })}</div>
         <p class="eyebrow">Bir ürün çalışması</p>
-        <h1 class="title welcome-title">Ruh Hali Günlüğü</h1>
-        <p class="welcome-lead">Ruh halini her gün 10 saniyede kaydet, seni neyin iyi hissettirdiğini keşfet.</p>
+        <h1 class="title welcome-title">Pip</h1>
+        <p class="welcome-lead">Ruh hali günlüğün. Her gün 10 saniyede kaydet, seni neyin iyi hissettirdiğini keşfet.</p>
         <div class="welcome-actions">
           <button class="choice choice-primary" data-action="welcome-try">
             <span class="choice-title">Uygulamayı dene</span>
@@ -1510,8 +1510,8 @@ if (typeof document !== 'undefined') {
       }
       resetDraft();
       render();
-      // Kayıt anı: Filiz sevinçle zıplar
-      $view.querySelector('.picker .filiz')?.classList.add('hop');
+      // Kayıt anı: Pip sevinçle zıplar
+      $view.querySelector('.picker .pip')?.classList.add('hop');
       const streak = computeStreak(state.entries);
       toast(isUpdate ? 'Kaydın güncellendi'
         : unlocked ? 'Kaydedildi · İlk içgörün hazır, İçgörü sekmesine bak'
@@ -1632,7 +1632,7 @@ if (typeof document !== 'undefined') {
   $view.addEventListener('keydown', (ev) => {
     if (ev.target.id === 'new-tag' && ev.key === 'Escape') actions['tag-cancel']();
     if (ev.target.id === 'note' && ev.key === 'Enter') $view.querySelector('[data-action="save"]:not(:disabled)')?.click();
-    // Filiz seçicisi klavyeyle de kullanılabilir (slider deseni)
+    // Pip seçicisi klavyeyle de kullanılabilir (slider deseni)
     if (ev.target.getAttribute && ev.target.getAttribute('role') === 'slider') {
       const dir = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[ev.key];
       const base = picker.chosen ? picker.target : 3;
@@ -1644,7 +1644,7 @@ if (typeof document !== 'undefined') {
     }
   });
 
-  /* Filiz'i sürükleme: dikey hareket ruh halini değiştirir, bırakınca en yakın basamağa oturur */
+  /* Pip'i sürükleme: dikey hareket ruh halini değiştirir, bırakınca en yakın basamağa oturur */
   $view.addEventListener('pointerdown', (ev) => {
     const root = ev.target.closest('.picker');
     if (!root || ev.button > 0) return;

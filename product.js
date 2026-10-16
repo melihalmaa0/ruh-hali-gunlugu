@@ -1,4 +1,4 @@
-/* Ruh Hali Günlüğü — ürün katmanı
+/* Pip · Ruh Hali Günlüğü — ürün katmanı
    - Olay takibi (gerçek; yalnızca bu tarayıcıda)
    - Ürün notları (ekranlardaki numaralı açıklamalar)
    - Ürün paneli (simüle edilmiş 1.000 kullanıcılık senaryo + canlı oturum) */
@@ -58,14 +58,14 @@ const EVENT_SCHEMA = [
 const PRODUCT_NOTES = {
   streak: {
     n: 1, title: 'Seri: tutma mekanizması',
-    body: 'Seri ve Filiz’in büyümesi (7 günde ikinci yaprak, 21 günde çiçek) kullanıcıya her gün geri dönmek için bir neden verir. Seri suçlamaz: tek bir boş gün “dinlenme günü” sayılır (haftada en fazla bir), art arda iki boş gün seriyi bitirir.',
+    body: 'Seri ve Pip’in büyümesi (7 günde ikinci yaprak, 21 günde çiçek) kullanıcıya her gün geri dönmek için bir neden verir. Seri suçlamaz: tek bir boş gün “dinlenme günü” sayılır (haftada en fazla bir), art arda iki boş gün seriyi bitirir.',
     hypothesis: 'Tek bir kaçırılan gün yüzünden seriyi kaybeden kullanıcı “artık anlamı yok” deyip bırakıyor. Dinlenme hakkı bu terki azaltır, seriyi de değersizleştirmez.',
     risk: 'Dinlenme hakkı fazla cömert olursa seri anlamını yitirir. Bu yüzden haftada bir ile sınırlı ve dinlenme günleri seri sayısına eklenmiyor.',
     metric: 'Boş günden sonraki gün geri dönüş oranı, 7. ve 30. gün tutma',
     panel: true,
   },
-  filiz: {
-    n: 2, title: 'Filiz seçici: temel eylemin sürtünmesi',
+  pip: {
+    n: 2, title: 'Pip seçici: temel eylemin sürtünmesi',
     body: 'İlk versiyonda 5 renkli buton vardı. Ruh hali seçimi uygulamanın tek zorunlu adımı; tek hareketlik, oyunsu bir seçici bu adımı keyifli hale getiriyor.',
     hypothesis: 'Sürüklenebilir seçici, ilk kayda kadar geçen süreyi kısaltır ve seçimden vazgeçmeyi azaltır.',
     metric: 'İlk kayda kadar geçen süre, seçim → kayıt tamamlama oranı',
@@ -83,7 +83,7 @@ const PRODUCT_NOTES = {
   },
   save: {
     n: 5, title: 'Kayıt anı: alışkanlık döngüsünün ödülü',
-    body: 'Tetik (akşam) → eylem (10 saniyelik kayıt) → ödül (Filiz zıplar, seri artar). Günde tek kayıt bilinçli bir karar: içgörüler anlamlı kalır, ekran sade olur.',
+    body: 'Tetik (akşam) → eylem (10 saniyelik kayıt) → ödül (Pip zıplar, seri artar). Günde tek kayıt bilinçli bir karar: içgörüler anlamlı kalır, ekran sade olur.',
     metric: 'Günlük aktif kaydeden, kayıt süresi',
   },
   weekly: {
@@ -96,7 +96,7 @@ const PRODUCT_NOTES = {
     body: 'Bilerek AI ile başlamadım: kurallar hızlı, ucuz ve açıklanabilir. Her kartta “dayanak” satırı var; kullanıcı neye dayandığını görünce güveniyor.',
     hypothesis: 'Huni verisine göre kullanıcıların çoğu ilk içgörüye (5. kayıt) ulaşmadan bırakıyordu. İlk içgörü artık 3. kayıtta açılıyor; veri azken kart “erken gözlem” olarak işaretleniyor ve örüntü iddia etmiyor.',
     risk: 'Az veriyle yanlış genelleme. Erken kart yalnızca 7. kayda kadar görünür, sonra yerini kurallara bırakır.',
-    metric: 'v2: AI ile haftalık yansıma, Filiz Plus aboneliğinin çekirdeği',
+    metric: 'v2: AI ile haftalık yansıma, Pip Plus aboneliğinin çekirdeği',
     panel: true,
   },
   responsible: {
@@ -174,12 +174,12 @@ const SIM = {
   retentionTarget: 25,
   experiment: {
     title: 'Deney #1 · Ruh hali seçici',
-    hypothesis: 'Klasik 5 buton yerine sürüklenebilir Filiz, ilk kayda kadar geçen süreyi kısaltır ve seçimden vazgeçmeyi azaltır.',
+    hypothesis: 'Klasik 5 buton yerine sürüklenebilir Pip, ilk kayda kadar geçen süreyi kısaltır ve seçimden vazgeçmeyi azaltır.',
     setup: 'Yeni kullanıcılar, %50 / %50 · 14 gün · 1.000 kullanıcı',
     rule: 'Ana metrikte en az %10 iyileşme ve koruma metriğinde düşüş yoksa B yayına alınır.',
     variants: [
       { key: 'A', name: '5 renkli buton', role: 'Kontrol' },
-      { key: 'B', name: 'Sürüklenebilir Filiz', role: 'Varyant' },
+      { key: 'B', name: 'Sürüklenebilir Pip', role: 'Varyant' },
     ],
     rows: [
       { metric: 'İlk kayda kadar süre', kind: 'Ana metrik', a: '21 sn', b: '14 sn', diff: '−%33', good: true },
@@ -244,15 +244,15 @@ const SIM = {
     { idea: 'Akşam hatırlatması (saat seçilebilir)', i: 8, c: 7, e: 8, shipped: true },
     { idea: 'İlk içgörüyü 3. kayıtta göster', i: 8, c: 6, e: 9, shipped: true },
     { idea: 'Suçlamayan seri (1 gün dinlenme hakkı)', i: 7, c: 7, e: 9, shipped: true },
-    { idea: 'Filiz Plus: AI haftalık yansıma (sahte kapı testi)', i: 9, c: 5, e: 6 },
+    { idea: 'Pip Plus: AI haftalık yansıma (sahte kapı testi)', i: 9, c: 5, e: 6 },
     { idea: 'Kısa başlangıç akışı (etiket seçimi)', i: 6, c: 6, e: 7, shipped: true },
     { idea: 'Gece teması', i: 3, c: 8, e: 7 },
   ],
   principle: { idea: 'Zor günlerde destek kartı ve yardım kaynakları', note: 'İlke gereği, puanlamadan bağımsız', shipped: true },
   roadmap: [
-    { when: 'Şimdi', status: 'Yayında', items: ['Günlük kayıt ve Filiz seçici', 'Kural tabanlı içgörüler', 'Geçmiş, takvim ve düzenleme', 'Olay takibi'], fresh: ['Suçlamayan seri', 'İlk içgörü 3. kayıtta', 'Zor günlerde destek', 'Kısa başlangıç akışı', 'Akşam hatırlatması', 'Telefona yüklenebilir sürüm (PWA)'] },
+    { when: 'Şimdi', status: 'Yayında', items: ['Günlük kayıt ve Pip seçici', 'Kural tabanlı içgörüler', 'Geçmiş, takvim ve düzenleme', 'Olay takibi'], fresh: ['Suçlamayan seri', 'İlk içgörü 3. kayıtta', 'Zor günlerde destek', 'Kısa başlangıç akışı', 'Akşam hatırlatması', 'Telefona yüklenebilir sürüm (PWA)'] },
     { when: 'Sonra', status: 'Sıradaki çeyrek', items: ['Hatırlatma saatini kayıt alışkanlığına göre önermek', 'Destek kartı eşiğini veriyle ayarlamak', 'Push sunucusu: uygulama kapalıyken bildirim'] },
-    { when: 'Daha sonra', status: 'Doğrulanınca', items: ['Filiz Plus: AI haftalık yansıma', 'Hesap ve cihazlar arası senkron', 'Aylık örüntüler ve dışa aktarma'] },
+    { when: 'Daha sonra', status: 'Doğrulanınca', items: ['Pip Plus: AI haftalık yansıma', 'Hesap ve cihazlar arası senkron', 'Aylık örüntüler ve dışa aktarma'] },
   ],
   notNow: [
     { item: 'Günde birden fazla kayıt', why: 'Takvim, seri ve içgörüler gün bazında anlamlı; ekranı karmaşıklaştırır.' },

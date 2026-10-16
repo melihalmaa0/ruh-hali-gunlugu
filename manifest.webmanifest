@@ -1,6 +1,6 @@
 {
-  "name": "Ruh Hali Günlüğü",
-  "short_name": "Ruh Hali",
+  "name": "Pip · Ruh Hali Günlüğü",
+  "short_name": "Pip",
   "description": "Günlük ruh halini 10 saniyede kaydet, haftalık örüntülerini keşfet.",
   "lang": "tr",
   "start_url": "./#bugun",

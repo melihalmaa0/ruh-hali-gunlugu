@@ -1,6 +1,6 @@
-# Ruh Hali Günlüğü
+# Pip · Ruh Hali Günlüğü
 
-Mobil öncelikli, bağımlılıksız bir ruh hali günlüğü. Günlük ruh halini, kısa bir notu ve etiketleri kaydeder; haftalık grafik, kural tabanlı örüntüler ve renkli bir ay takvimi sunar.
+**Pip**, mobil öncelikli ve bağımlılıksız bir ruh hali günlüğü; adını maskotundan alır. Günlük ruh halini, kısa bir notu ve etiketleri kaydeder; haftalık grafik, kural tabanlı örüntüler ve renkli bir ay takvimi sunar.
 
 ## Çalıştırma
 
@@ -20,7 +20,7 @@ python -m http.server 8000
 
 Uygulamayı inceleyen kişinin ürün kararlarını birkaç dakikada görebilmesi için:
 
-- **Ürün paneli** (`#panel`): problem ve hedef, kuzey yıldızı metriği, aktivasyon hunisi, tutma eğrisi, A/B deneyleri (tamamlanan: Filiz ve 5 buton; süren: ilk içgörü 3. kayıtta, suçlamayan seri), ICE önceliklendirmesi ve yol haritası. Bu metrikler **simüle edilmiş 1.000 kullanıcılık bir senaryodur**, panelde de açıkça belirtilir. En alttaki "Senin oturumun" bölümü ise gerçek ve canlıdır.
+- **Ürün paneli** (`#panel`): problem ve hedef, kuzey yıldızı metriği, aktivasyon hunisi, tutma eğrisi, A/B deneyleri (tamamlanan: Pip ve 5 buton; süren: ilk içgörü 3. kayıtta, suçlamayan seri), ICE önceliklendirmesi ve yol haritası. Bu metrikler **simüle edilmiş 1.000 kullanıcılık bir senaryodur**, panelde de açıkça belirtilir. En alttaki "Senin oturumun" bölümü ise gerçek ve canlıdır.
 - **Ürün notları:** Sağ alttaki düğmeyle açılır. Her ekranda numaralı noktalar belirir; her nokta bir kararın gerekçesini, hipotezini ve izlenecek metriğini açıklar.
 - **Olay takibi:** `session_start`, `screen_view`, `mood_selected` (sürükleme, dokunma, klavye), `entry_saved`, `tag_toggled`, `first_insight_unlocked`, `tags_chosen`, `onboarding_completed`, `reminder_prompt_shown`, `reminder_set`, `reminder_declined`, `reminder_calendar_added`, `reminder_fired`, `install_prompt`, `support_shown`, `support_resource_tapped`, `support_dismissed`, `note_opened`. Olaylar yalnızca tarayıcıda (`ruh-hali-gunlugu:events`, son 500 olay) tutulur, hiçbir yere gönderilmez.
 
@@ -36,7 +36,7 @@ Uygulamayı inceleyen kişinin ürün kararlarını birkaç dakikada görebilmes
 
 **Zor günlerde destek:** Son 4 günün en az 3'ünde ruh hali "Kötü" ya da "Çok kötü" ise Bugün ve İçgörü ekranlarında nazik bir destek kartı çıkar. Kart kullanıcının kendi verisinden iyi gelen bir etiketi hatırlatır ve yardım kaynaklarını (`SUPPORT_RESOURCES`, Türkiye) listeler. "Şimdi değil" denince 3 gün gösterilmez. Demoda görmek için: Ayarlar → **Zor günler senaryosu**.
 
-Ruh hali, maskot **Filiz** yukarı ya da aşağı sürüklenerek seçilir; bırakınca en yakın ruh haline oturur. Sağdaki ölçeğe dokunarak ya da klavyede yön tuşlarıyla da seçilebilir. Filiz seriyle büyür: 7 günde ikinci yaprak, 21 günde çiçek. Tasarım seçenekleri `tasarim/filiz-secenekler.html` dosyasında.
+Ruh hali, maskot **Pip** yukarı ya da aşağı sürüklenerek seçilir; bırakınca en yakın ruh haline oturur. Sağdaki ölçeğe dokunarak ya da klavyede yön tuşlarıyla da seçilebilir. Pip seriyle büyür: 7 günde ikinci yaprak, 21 günde çiçek. Tasarım seçenekleri `tasarim/pip-secenekler.html` dosyasında.
 
 Geçmiş kayıtlar, Geçmiş ekranındaki kalem ikonuyla ya da takvimde bir güne dokunarak düzenlenebilir veya silinebilir. Boş kalan geçmiş günlere sonradan kayıt eklenebilir. Düzenleme ekranının adresi `#duzenle/YYYY-AA-GG` biçimindedir.
 
@@ -47,10 +47,10 @@ Geçmiş kayıtlar, Geçmiş ekranındaki kalem ikonuyla ya da takvimde bir gün
 | `index.html` | İskelet ve alt menü |
 | `styles.css` | Tasarım (renk değişkenleri `:root` içinde) |
 | `product.js` | Ürün katmanı: olay takibi, ürün notları, simülasyon verisi ve ürün paneli |
-| `app.js` | Depolama, hesaplamalar, örnek veri, Filiz ve arayüz |
+| `app.js` | Depolama, hesaplamalar, örnek veri, Pip ve arayüz |
 | `sw.js` | Service worker: çevrimdışı önbellek, bildirime dokununca uygulamayı açma |
 | `manifest.webmanifest`, `icons/` | PWA tanımı ve ikonlar |
 
-- **Veri:** `localStorage` → `ruh-hali-gunlugu:v1` anahtarı. Biçim: `{ entries: { "YYYY-AA-GG": { date, mood (1-5), note, tags[], updatedAt } }, customTags[], tagSet[] | null }` (`tagSet` başlangıçta seçilen etiketler; `null` ise varsayılan 5 etiket)
+- **Veri:** `localStorage` → `ruh-hali-gunlugu:v1` anahtarı (uygulamanın eski adı; yüklü cihazlardaki kayıtlar kaybolmasın diye anahtarlar değiştirilmedi). Biçim: `{ entries: { "YYYY-AA-GG": { date, mood (1-5), note, tags[], updatedAt } }, customTags[], tagSet[] | null }` (`tagSet` başlangıçta seçilen etiketler; `null` ise varsayılan 5 etiket)
 - **İçgörüler:** `computeInsights(entries)` saf bir fonksiyondur ve `{ tone, title, body, basis }` listesi döner. AI entegrasyonu için bu fonksiyonun yerine aynı biçimde sonuç dönen bir servis çağrısı koymak yeterli.
 - **Kurallar:** haftanın günü ortalaması ile genel ortalama farkı (≥ 0,5), etiketli ve etiketsiz günlerin farkı (≥ 0,5, her grupta en az 3 kayıt), son 7 gün ile önceki 7 günün farkı (≥ 0,4), 7 gün ve üzeri seri. Kayıt sayısı 3-6 arasındaysa ayrıca bir "erken gözlem" kartı eklenir.

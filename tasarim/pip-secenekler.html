@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Filiz · Maskot seçenekleri</title>
+<title>Pip · Maskot seçenekleri</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Fraunces:opsz,wght,SOFT@9..144,400..600,0..100&display=swap">
 <style>
   :root { --bg:#EAE7DC; --surface:#F5F2E9; --surface-2:#ECE8DD; --ink:#2A302B; --muted:#6C6E64; --faint:#9C998C; --line:#E0DACB; --accent:#2F6B5E; }
@@ -30,7 +30,7 @@
 </head>
 <body>
 <main>
-  <h1>Filiz için üç yön</h1>
+  <h1>Pip için üç yön</h1>
   <p class="lead">Her tasarım seçilen ruh haline göre renk ve ifade değiştiriyor, seri ilerledikçe büyüyor.</p>
   <div id="variants"></div>
 </main>
@@ -81,7 +81,7 @@ function flower(cx, cy, r) {
 
 const shadow = (cx, y, rx) => `<ellipse cx="${cx}" cy="${y}" rx="${rx}" ry="3.2" fill="rgba(74,60,40,.13)"/>`;
 
-/* A — Filiz: yuvarlak tohum gövde, tepede yaprak */
+/* A — Pip: yuvarlak tohum gövde, tepede yaprak */
 function seed(mood, stage) {
   const body = MOODS[mood - 1].color;
   const leafR = `<path d="M50 24 C53 13 63 8 73 10 C71 20 62 26 50 24Z" fill="${LEAF}"/>`;
@@ -130,7 +130,7 @@ function pot(mood, stage) {
 }
 
 const VARIANTS = [
-  { name: 'Filiz', badge: 'Önerim', fn: seed,
+  { name: 'Pip', badge: 'Önerim', fn: seed,
     desc: 'Yuvarlak bir tohum, başında tek yaprak. En sade ve en kolay tanınan seçenek; küçük boyutlarda (alt menü, bildirim ikonu) da okunuyor.',
     pros: ['Uygulama ikonu olarak da kullanılabilir', 'Yaprak → iki yaprak → çiçek büyümesi çok net', 'Mevcut ruh hali yüzlerinin doğal devamı'] },
   { name: 'Tomurcuk', badge: 'Daha karakterli', fn: bud,

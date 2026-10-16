@@ -1,10 +1,10 @@
-/* Ruh Hali Günlüğü — service worker
+/* Pip · Ruh Hali Günlüğü — service worker
    - Uygulama kabuğunu önbelleğe alır: çevrimdışı açılır
    - Hatırlatma bildirimine dokununca uygulamayı açar
    Dosyalar değişince CACHE sürümünü artır. */
 'use strict';
 
-const CACHE = 'ruh-hali-v1';
+const CACHE = 'ruh-hali-v2';
 const SHELL = [
   './',
   'index.html',

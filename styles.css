@@ -138,10 +138,10 @@ button { cursor: pointer; }
 .streak svg { width: 15px; height: 15px; fill: #C98F4A; }
 .streak strong { font-weight: 600; }
 
-/* ---------- Filiz mood picker ---------- */
+/* ---------- Pip mood picker ---------- */
 
 .picker {
-  position: relative;          /* ölçek sağa sabitlenir, Filiz tam ortada kalır */
+  position: relative;          /* ölçek sağa sabitlenir, Pip tam ortada kalır */
   margin-top: -12px;
   touch-action: none;          /* sürüklerken sayfa kaymasın */
   user-select: none;
@@ -169,17 +169,17 @@ button { cursor: pointer; }
   filter: blur(22px);
 }
 
-.filiz { position: relative; display: block; overflow: visible; }
-.picker .filiz { width: 168px; height: 168px; }
+.pip { position: relative; display: block; overflow: visible; }
+.picker .pip { width: 168px; height: 168px; }
 
-.picker.is-idle .filiz { animation: bob 2.6s ease-in-out infinite; }
+.picker.is-idle .pip { animation: bob 2.6s ease-in-out infinite; }
 @keyframes bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-7px); }
 }
 
 /* Kayıt anı: kısa bir sevinç zıplaması */
-.picker .filiz.hop { animation: hop .7s cubic-bezier(.3, .7, .3, 1); }
+.picker .pip.hop { animation: hop .7s cubic-bezier(.3, .7, .3, 1); }
 @keyframes hop {
   0% { transform: translateY(0) scale(1, 1); }
   18% { transform: translateY(2px) scale(1.06, .94); }
@@ -286,8 +286,8 @@ button { cursor: pointer; }
   line-height: 36px;
 }
 
-.empty-filiz { width: 84px; margin: -6px auto 6px; }
-.empty-filiz .filiz { width: 100%; height: auto; }
+.empty-pip { width: 84px; margin: -6px auto 6px; }
+.empty-pip .pip { width: 100%; height: auto; }
 
 /* ---------- Form ---------- */
 
@@ -974,8 +974,8 @@ body.standalone .toast { bottom: calc(24px + env(safe-area-inset-bottom, 0px)); 
   text-align: center;
   padding-block: 12px;
 }
-.welcome-filiz { width: 150px; margin: 0 auto 8px; }
-.welcome-filiz .filiz { width: 100%; height: auto; animation: bob 2.8s ease-in-out infinite; }
+.welcome-pip { width: 150px; margin: 0 auto 8px; }
+.welcome-pip .pip { width: 100%; height: auto; animation: bob 2.8s ease-in-out infinite; }
 .welcome-title { margin: 6px 0 10px; font-size: clamp(34px, 10vw, 42px); }
 .welcome-lead { max-width: 330px; margin: 0 auto 28px; color: var(--muted); font-size: 16px; }
 .welcome-actions { display: grid; gap: 12px; text-align: left; }
