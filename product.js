@@ -36,6 +36,18 @@ const EVENT_SCHEMA = [
   { name: 'mood_selected', label: 'Ruh hali seçildi', why: 'Seçim yöntemi (sürükleme, dokunma, klavye)' },
   { name: 'entry_saved', label: 'Kayıt yapıldı', why: 'Aktivasyon, ilk kayda kadar geçen süre' },
   { name: 'tag_toggled', label: 'Etiket seçildi', why: 'İçgörü kalitesi' },
+  { name: 'first_insight_unlocked', label: 'İlk içgörü açıldı', why: 'Aktivasyon anı: kullanıcının değeri ilk gördüğü an (Deney #2)' },
+  { name: 'tags_chosen', label: 'Etiketler seçildi', why: 'Başlangıçta kaç etiket seçiliyor, kaç kişi atlıyor' },
+  { name: 'onboarding_completed', label: 'Başlangıç tamamlandı', why: 'Karşılamadan ilk kayda kadar geçen süre' },
+  { name: 'reminder_prompt_shown', label: 'Hatırlatma soruldu', why: 'Yumuşak sorunun kaç kişiye gösterildiği (Deney #4 paydası)' },
+  { name: 'reminder_set', label: 'Hatırlatma açıldı', why: 'Saat ve tarayıcı izni sonucu: izin verme oranı' },
+  { name: 'reminder_declined', label: 'Hatırlatma reddedildi', why: 'Soru doğru anda mı soruluyor' },
+  { name: 'reminder_calendar_added', label: 'Takvime eklendi', why: 'Bildirim kısıtına karşı ikinci kanal kullanılıyor mu' },
+  { name: 'reminder_fired', label: 'Hatırlatma gönderildi', why: 'Hatırlatma → kayıt dönüşümü' },
+  { name: 'install_prompt', label: 'Yükleme önerildi', why: 'Ana ekrana ekleme oranı (yüklü kullanıcı daha çok döner mi)' },
+  { name: 'support_shown', label: 'Destek kartı gösterildi', why: 'Tetik kuralı ne sıklıkla çalışıyor (eşik ayarı)' },
+  { name: 'support_resource_tapped', label: 'Yardım kaynağına dokunuldu', why: 'Kart gerçekten işe yarıyor mu (yalnızca hangi kaynak, içerik değil)' },
+  { name: 'support_dismissed', label: 'Destek kartı ertelendi', why: 'Kart rahatsız edici mi' },
   { name: 'note_opened', label: 'Ürün notu açıldı', why: 'Bu sunumun hangi kısmı ilgi çekiyor' },
 ];
 
@@ -46,9 +58,11 @@ const EVENT_SCHEMA = [
 const PRODUCT_NOTES = {
   streak: {
     n: 1, title: 'Seri: tutma mekanizması',
-    body: 'Seri ve Filiz’in büyümesi (7 günde ikinci yaprak, 21 günde çiçek) kullanıcıya her gün geri dönmek için bir neden verir.',
-    risk: 'Seri bozulunca suçluluk ve terk. Yol haritasında: 1 günlük “dinlenme hakkı” olan suçlamayan seri.',
-    metric: '3. ve 7. gün tutma, seri uzunluğu dağılımı',
+    body: 'Seri ve Filiz’in büyümesi (7 günde ikinci yaprak, 21 günde çiçek) kullanıcıya her gün geri dönmek için bir neden verir. Seri suçlamaz: tek bir boş gün “dinlenme günü” sayılır (haftada en fazla bir), art arda iki boş gün seriyi bitirir.',
+    hypothesis: 'Tek bir kaçırılan gün yüzünden seriyi kaybeden kullanıcı “artık anlamı yok” deyip bırakıyor. Dinlenme hakkı bu terki azaltır, seriyi de değersizleştirmez.',
+    risk: 'Dinlenme hakkı fazla cömert olursa seri anlamını yitirir. Bu yüzden haftada bir ile sınırlı ve dinlenme günleri seri sayısına eklenmiyor.',
+    metric: 'Boş günden sonraki gün geri dönüş oranı, 7. ve 30. gün tutma',
+    panel: true,
   },
   filiz: {
     n: 2, title: 'Filiz seçici: temel eylemin sürtünmesi',
@@ -80,13 +94,35 @@ const PRODUCT_NOTES = {
   patterns: {
     n: 7, title: 'Kural tabanlı içgörüler (v1)',
     body: 'Bilerek AI ile başlamadım: kurallar hızlı, ucuz ve açıklanabilir. Her kartta “dayanak” satırı var; kullanıcı neye dayandığını görünce güveniyor.',
-    risk: 'İlk içgörü 5. kayıtta açılıyor; huni verisine göre kullanıcıların çoğu oraya ulaşmadan bırakıyor. Sıradaki deney: ilk içgörüyü 3. kayda çekmek.',
+    hypothesis: 'Huni verisine göre kullanıcıların çoğu ilk içgörüye (5. kayıt) ulaşmadan bırakıyordu. İlk içgörü artık 3. kayıtta açılıyor; veri azken kart “erken gözlem” olarak işaretleniyor ve örüntü iddia etmiyor.',
+    risk: 'Az veriyle yanlış genelleme. Erken kart yalnızca 7. kayda kadar görünür, sonra yerini kurallara bırakır.',
     metric: 'v2: AI ile haftalık yansıma, Filiz Plus aboneliğinin çekirdeği',
     panel: true,
   },
   responsible: {
     n: 8, title: 'Sorumlu ürün',
-    body: 'Ruh sağlığına yakın bir üründe içgörüler tıbbi tavsiye gibi sunulmamalı. Yol haritasında: art arda zor günlerde nazik bir destek kartı ve yardım kaynakları. Bu madde puanlamadan bağımsız, ilke gereği var.',
+    body: 'Ruh sağlığına yakın bir üründe içgörüler tıbbi tavsiye gibi sunulmamalı. Bu yüzden her kartta dayanak var ve dil “teşhis” değil “gözlem”. Art arda zor günlerde nazik bir destek kartı ve yardım kaynakları çıkıyor; bu madde puanlamadan bağımsız, ilke gereği yapıldı.',
+  },
+  reminder: {
+    n: 14, title: 'Akşam hatırlatması: doğru anda, doğru kanaldan',
+    body: 'Hatırlatma izni açılışta değil, ilk kayıttan hemen sonra isteniyor: kullanıcı değeri yeni gördüğü için “evet” deme olasılığı en yüksek an. Önce uygulamanın kendi kartı soruyor, tarayıcı izni ancak “Hatırlat” denince açılıyor; reddedilen tarayıcı izni bir daha sorulamaz.',
+    hypothesis: 'Hatırlatma, tetik → eylem → ödül döngüsünün eksik parçası. Huni verisine göre en büyük kayıp ilk kayıttan sonra; akşam hatırlatması 3. gün geri dönüşü artırır.',
+    risk: 'Sunucusuz bir sitede bildirim yalnızca uygulama açıkken güvenilir. Bu kısıtı gizlemek yerine ikinci bir kanal eklendi: takvim etkinliği (.ics) her telefonda çalışır ve veri cihazdan çıkmaz. O gün kayıt yapıldıysa bildirim sessiz kalır.',
+    metric: 'Yumuşak soruya “evet” oranı, tarayıcı izni verme oranı, hatırlatma açık kullanıcıların 7. gün tutması (Deney #4)',
+    panel: true,
+  },
+  onboarding: {
+    n: 13, title: 'Kısa başlangıç: değer, form değil',
+    body: 'Başlangıç iki adım: kullanıcı günlerini etkileyen etiketleri seçer, ardından doğrudan ilk kaydına geçer. Hesap, profil ya da hedef sorusu yok; her soru ilk kayda giden yolu uzatır. Etiket adımı atlanabilir, atlayan varsayılan 5 etiketle başlar.',
+    hypothesis: 'Kendi etiketlerini seçen kullanıcı kayıtlarına daha çok etiket ekler; bu da içgörülerin daha erken ve daha kişisel olmasını sağlar.',
+    risk: 'Her ek adım terk demek. Bu yüzden tek ekran, tek dokunuşlu seçim ve “Şimdilik atla”. Başlangıçtan ilk kayda kadar geçen süre ölçülüyor; 30 saniyeyi aşarsa adım sadeleştirilir.',
+    metric: 'Karşılama → ilk kayıt dönüşümü, başlangıç süresi (onboarding_completed), etiketli kayıt oranı',
+  },
+  support: {
+    n: 12, title: 'Zor günlerde destek',
+    body: 'Son 4 günün en az 3’ünde ruh hali “Kötü” ya da “Çok kötü” ise kart çıkar. Dil yargılamaz ve teşhis koymaz; kullanıcının kendi verisinden iyi gelen bir şeyi hatırlatır ve gerçek yardım kaynaklarına tek dokunuşla ulaştırır. “Şimdi değil” denince 3 gün gösterilmez.',
+    risk: 'Kart sık çıkarsa rahatsız eder, hiç çıkmazsa ihtiyacı kaçırır. Eşik bilerek temkinli; yanlış alarm, kaçırılan bir zor haftadan daha az zararlı. Kriz anını yalnızca bir uygulama kartına bırakmamak için 112 her zaman listede.',
+    metric: 'Başarı dönüşüm değil: kaynağa dokunma oranı, kartı kapatma oranı ve kartı gören kullanıcıların ertesi hafta geri dönüşü. Kartın gösterildiği haftada hiçbir ücretli teklif gösterilmez.',
   },
   calendar: {
     n: 9, title: 'Geriye bakmak: biriken değer',
@@ -128,8 +164,8 @@ const SIM = {
     { label: '7 gün seri yaptı', count: 260 },
   ],
   funnelFinding: {
-    finding: 'Kullanıcılar ilk kayıttan sonra dönmüyor. İlk içgörü 5. kayıtta açılıyor; kullanıcıların çoğu değeri görmeden bırakıyor.',
-    action: 'Akşam hatırlatması ve ilk içgörüyü 3. kayda çekme deneyleri önceliklendirildi.',
+    finding: 'Kullanıcılar ilk kayıttan sonra dönmüyor. İlk içgörü 5. kayıtta açılıyordu; kullanıcıların çoğu değeri görmeden bırakıyordu.',
+    action: 'İlk içgörü 3. kayda çekildi ve suçlamayan seri yayına alındı; ikisi de deneyle ölçülüyor (Deney #2 ve #3). Ardından akşam hatırlatması eklendi (Deney #4).',
   },
   retention: [
     { day: 0, value: 100 }, { day: 1, value: 58 }, { day: 3, value: 41 },
@@ -153,18 +189,69 @@ const SIM = {
     decision: 'B kazandı ve varsayılan oldu.',
     learning: 'B’de ilk kullanımda “nasıl seçilir?” tereddüdü görüldü. v2’de ölçeğe uç etiketleri (Harika / Çok kötü) ve “Yukarı ya da aşağı kaydır” ipucu eklendi.',
   },
+  // Huni bulgusundan çıkan, yayına alınmış ama sonucu henüz belli olmayan deneyler
+  running: [
+    {
+      title: 'Deney #2 · İlk içgörü 3. kayıtta',
+      progress: '6 / 14 gün',
+      hypothesis: 'Kullanıcı ilk içgörüyü 5. yerine 3. kayıtta görürse değeri daha erken fark eder ve 3. gün geri dönüş artar.',
+      variants: [
+        { key: 'A', name: 'İlk içgörü 5. kayıtta', role: 'Kontrol' },
+        { key: 'B', name: '3. kayıtta “erken gözlem”', role: 'Varyant' },
+      ],
+      setup: 'Yeni kullanıcılar, %50 / %50 · 14 gün · hedef 1.200 kullanıcı',
+      metrics: [
+        { kind: 'Ana metrik', metric: '3. gün geri dönüş (şu an %59)' },
+        { kind: 'İkincil', metric: 'İçgörü ekranını gören → ertesi gün kayıt' },
+        { kind: 'Koruma metriği', metric: '7. gün tutma (erken ve zayıf içgörü güveni düşürmemeli)' },
+      ],
+      rule: 'Ana metrikte en az 4 puan artış ve koruma metriğinde düşüş yoksa B kalıcı olur. Ara sonuçlara bakıp erken karar verilmez.',
+    },
+    {
+      title: 'Deney #3 · Suçlamayan seri',
+      progress: '3 / 21 gün',
+      hypothesis: 'Tek bir boş gün seriyi sıfırlamazsa, kullanıcı “artık anlamı yok” deyip bırakmaz ve ertesi gün geri döner.',
+      variants: [
+        { key: 'A', name: 'Boş gün seriyi sıfırlar', role: 'Kontrol' },
+        { key: 'B', name: 'Haftada 1 dinlenme günü', role: 'Varyant' },
+      ],
+      setup: 'Tüm aktif kullanıcılar, %50 / %50 · 21 gün',
+      metrics: [
+        { kind: 'Ana metrik', metric: 'Boş günden sonraki 2 gün içinde geri dönüş' },
+        { kind: 'İkincil', metric: '30. gün tutma' },
+        { kind: 'Koruma metriği', metric: 'Haftalık kayıt sayısı (4,2): seri gevşeyince düzen bozulmamalı' },
+      ],
+      rule: 'Geri dönüşte en az 5 puan artış ve haftalık kayıt sayısında %5’ten fazla düşüş yoksa B kalıcı olur.',
+    },
+    {
+      title: 'Deney #4 · Hatırlatma izni',
+      progress: '1 / 14 gün',
+      hypothesis: 'İzni açılışta değil, ilk kayıttan sonra uygulamanın kendi kartıyla sormak izin verme oranını artırır; reddedilen tarayıcı izni bir daha sorulamadığı için bu fark kalıcıdır.',
+      variants: [
+        { key: 'A', name: 'Açılışta tarayıcı izni', role: 'Kontrol' },
+        { key: 'B', name: 'İlk kayıttan sonra yumuşak soru', role: 'Varyant' },
+      ],
+      setup: 'Yeni kullanıcılar, %50 / %50 · 14 gün',
+      metrics: [
+        { kind: 'Ana metrik', metric: 'Hatırlatması açık kullanıcı oranı (bildirim ya da takvim)' },
+        { kind: 'İkincil', metric: '3. gün geri dönüş' },
+        { kind: 'Koruma metriği', metric: 'Bildirimi sonradan kapatma oranı: hatırlatma rahatsız etmemeli' },
+      ],
+      rule: 'Ana metrikte en az 10 puan artış ve koruma metriğinde artış yoksa B kalıcı olur.',
+    },
+  ],
   backlog: [
-    { idea: 'Akşam hatırlatması (saat seçilebilir)', i: 8, c: 7, e: 8 },
-    { idea: 'İlk içgörüyü 3. kayıtta göster', i: 8, c: 6, e: 9 },
-    { idea: 'Suçlamayan seri (1 gün dinlenme hakkı)', i: 7, c: 7, e: 9 },
+    { idea: 'Akşam hatırlatması (saat seçilebilir)', i: 8, c: 7, e: 8, shipped: true },
+    { idea: 'İlk içgörüyü 3. kayıtta göster', i: 8, c: 6, e: 9, shipped: true },
+    { idea: 'Suçlamayan seri (1 gün dinlenme hakkı)', i: 7, c: 7, e: 9, shipped: true },
     { idea: 'Filiz Plus: AI haftalık yansıma (sahte kapı testi)', i: 9, c: 5, e: 6 },
-    { idea: 'Kısa başlangıç akışı (etiket seçimi)', i: 6, c: 6, e: 7 },
+    { idea: 'Kısa başlangıç akışı (etiket seçimi)', i: 6, c: 6, e: 7, shipped: true },
     { idea: 'Gece teması', i: 3, c: 8, e: 7 },
   ],
-  principle: { idea: 'Zor günlerde destek kartı ve yardım kaynakları', note: 'İlke gereği, puanlamadan bağımsız' },
+  principle: { idea: 'Zor günlerde destek kartı ve yardım kaynakları', note: 'İlke gereği, puanlamadan bağımsız', shipped: true },
   roadmap: [
-    { when: 'Şimdi', status: 'Yayında', items: ['Günlük kayıt ve Filiz seçici', 'Kural tabanlı içgörüler', 'Geçmiş, takvim ve düzenleme', 'Olay takibi'] },
-    { when: 'Sonra', status: 'Sıradaki çeyrek', items: ['Akşam hatırlatması', 'Suçlamayan seri', 'İlk içgörü 3. kayıtta', 'Zor günlerde destek'] },
+    { when: 'Şimdi', status: 'Yayında', items: ['Günlük kayıt ve Filiz seçici', 'Kural tabanlı içgörüler', 'Geçmiş, takvim ve düzenleme', 'Olay takibi'], fresh: ['Suçlamayan seri', 'İlk içgörü 3. kayıtta', 'Zor günlerde destek', 'Kısa başlangıç akışı', 'Akşam hatırlatması', 'Telefona yüklenebilir sürüm (PWA)'] },
+    { when: 'Sonra', status: 'Sıradaki çeyrek', items: ['Hatırlatma saatini kayıt alışkanlığına göre önermek', 'Destek kartı eşiğini veriyle ayarlamak', 'Push sunucusu: uygulama kapalıyken bildirim'] },
     { when: 'Daha sonra', status: 'Doğrulanınca', items: ['Filiz Plus: AI haftalık yansıma', 'Hesap ve cihazlar arası senkron', 'Aylık örüntüler ve dışa aktarma'] },
   ],
   notNow: [
@@ -285,6 +372,30 @@ function experimentHtml() {
     </article>`;
 }
 
+function runningExperimentHtml(ex) {
+  return `
+    <article class="card exp">
+      <div class="exp-head">
+        <h3>${ex.title}</h3>
+        <span class="chip-status is-running"><i></i>Sürüyor · ${ex.progress}</span>
+      </div>
+      <p class="exp-hyp"><span class="k">Hipotez</span>${escapeHtml(ex.hypothesis)}</p>
+      <div class="exp-variants">
+        ${ex.variants.map((v) => `
+          <div class="variant">
+            <span class="v-key">${v.key}</span>
+            <div><strong>${escapeHtml(v.name)}</strong><span>${v.role}</span></div>
+          </div>`).join('')}
+      </div>
+      <p class="exp-meta">${escapeHtml(ex.setup)}</p>
+      <ul class="exp-metrics">${ex.metrics.map((m) => `
+        <li><span>${m.kind}</span>${escapeHtml(m.metric)}</li>`).join('')}
+      </ul>
+      <p class="exp-rule"><span class="k">Karar kuralı (önceden belirlendi)</span>${escapeHtml(ex.rule)}</p>
+      <p class="exp-demo">Bu demoda B sürümü açık; uygulamada deneyebilirsin.</p>
+    </article>`;
+}
+
 function backlogHtml() {
   const rows = SIM.backlog
     .map((b) => ({ ...b, score: (b.i + b.c + b.e) / 3 }))
@@ -297,17 +408,17 @@ function backlogHtml() {
           <tbody>
             ${rows.map((r, i) => `
               <tr${i < 3 ? ' class="is-top"' : ''}>
-                <td>${escapeHtml(r.idea)}</td><td>${r.i}</td><td>${r.c}</td><td>${r.e}</td>
+                <td>${escapeHtml(r.idea)}${r.shipped ? ' <span class="tag-shipped">Yayında</span>' : ''}</td><td>${r.i}</td><td>${r.c}</td><td>${r.e}</td>
                 <td><span class="score"><i style="width:${(r.score * 4).toFixed(1)}px"></i>${num1(r.score)}</span></td>
               </tr>`).join('')}
             <tr class="principle">
-              <td>${escapeHtml(SIM.principle.idea)}</td>
+              <td>${escapeHtml(SIM.principle.idea)}${SIM.principle.shipped ? ' <span class="tag-shipped">Yayında</span>' : ''}</td>
               <td colspan="4">${escapeHtml(SIM.principle.note)}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p class="table-foot">E: Etki · G: Güven · K: Kolaylık (1-10). Puan üçünün ortalaması; ilk üç fikir sıradaki çeyreğe alındı.</p>
+      <p class="table-foot">E: Etki · G: Güven · K: Kolaylık (1-10). Puan üçünün ortalaması. “Yayında” etiketli fikirler bu çeyrekte hayata geçti.</p>
     </div>`;
 }
 
@@ -317,7 +428,8 @@ function roadmapHtml() {
       ${SIM.roadmap.map((col, i) => `
         <div class="card rm-col${i === 0 ? ' is-now' : ''}">
           <div class="rm-head"><h3>${col.when}</h3><span>${col.status}</span></div>
-          <ul>${col.items.map((it) => `<li>${escapeHtml(it)}</li>`).join('')}</ul>
+          <ul>${col.items.map((it) => `<li>${escapeHtml(it)}</li>`).join('')}${(col.fresh || []).map((it) => `
+            <li>${escapeHtml(it)} <span class="tag-shipped">Yeni</span></li>`).join('')}</ul>
         </div>`).join('')}
     </div>
     <div class="card not-now">
@@ -326,7 +438,7 @@ function roadmapHtml() {
     </div>`;
 }
 
-const SCREEN_LABELS = { today: 'Bugün', insights: 'İçgörü', history: 'Geçmiş', settings: 'Ayarlar', panel: 'Ürün paneli', welcome: 'Karşılama', edit: 'Geçmiş günü düzenleme' };
+const SCREEN_LABELS = { today: 'Bugün', insights: 'İçgörü', history: 'Geçmiş', settings: 'Ayarlar', panel: 'Ürün paneli', welcome: 'Karşılama', edit: 'Geçmiş günü düzenleme', onboarding: 'Başlangıç', tags: 'Etiketler' };
 const METHOD_LABELS = { drag: 'sürükleyerek', tap: 'dokunarak', keyboard: 'klavyeyle' };
 
 function describeEvent(e) {
@@ -336,11 +448,21 @@ function describeEvent(e) {
     case 'session_start': return p.returning ? 'Geri dönen ziyaretçi' : 'İlk ziyaret';
     case 'screen_view': return SCREEN_LABELS[p.screen] || p.screen;
     case 'mood_selected': return `${moodLabel(p.mood)} · ${METHOD_LABELS[p.method] || ''}`;
-    case 'entry_saved': return [moodLabel(p.mood), p.isUpdate ? 'güncelleme' : 'yeni kayıt', p.hasNote ? 'notlu' : '', p.tagCount ? `${p.tagCount} etiket` : ''].filter(Boolean).join(' · ');
+    case 'entry_saved': return [moodLabel(p.mood), p.isUpdate ? 'güncelleme' : 'yeni kayıt', p.hasNote ? 'notlu' : '', p.tagCount ? `${p.tagCount} etiket` : '', p.afterRest ? 'dinlenme gününden sonra' : ''].filter(Boolean).join(' · ');
+    case 'first_insight_unlocked': return `${p.entries}. kayıtta`;
     case 'tag_toggled': return `${p.tag} ${p.on ? 'seçildi' : 'kaldırıldı'}`;
     case 'note_opened': return PRODUCT_NOTES[p.note] ? PRODUCT_NOTES[p.note].title : p.note;
-    case 'sample_loaded': return '3 haftalık örnek veri';
-    case 'welcome_choice': return { try: 'Uygulamayı dene', panel: 'Ürün kararlarını incele', empty: 'Boş günlük' }[p.choice] || p.choice;
+    case 'sample_loaded': return p.scenario === 'hard' ? 'Zor günler senaryosu' : '3 haftalık örnek veri';
+    case 'tags_chosen': return p.skipped ? 'atlandı' : `${p.count} etiket · ${p.from === 'settings' ? 'Ayarlar' : 'başlangıç'}`;
+    case 'onboarding_completed': return `ilk kayda ${fmtDuration(p.ms)}`;
+    case 'reminder_set': return [p.time, { granted: 'bildirim izni verildi', denied: 'bildirim izni reddedildi', unsupported: 'bildirim yok, takvim', default: 'izin sorusu kapatıldı' }[p.permission] || '', { prompt: 'kayıt sonrası soru', settings: 'Ayarlar', time_change: 'saat değişti' }[p.from] || ''].filter(Boolean).join(' · ');
+    case 'reminder_calendar_added': return p.time;
+    case 'reminder_fired': return 'bildirim';
+    case 'install_prompt': return p.outcome === 'accepted' ? 'kabul edildi' : 'vazgeçildi';
+    case 'support_shown': return `${SCREEN_LABELS[p.where] || p.where} · son 4 günde ${p.low} düşük kayıt`;
+    case 'support_resource_tapped': return p.resource.replace('tel:', 'Arama: ');
+    case 'support_dismissed': return SCREEN_LABELS[p.where] || p.where;
+    case 'welcome_choice': return { try: 'Uygulamayı dene', panel: 'Ürün kararlarını incele', empty: 'Kendi günlüğünü başlat' }[p.choice] || p.choice;
     case 'notes_toggled': return p.on ? 'açıldı' : 'kapatıldı';
     default: return '';
   }
@@ -447,8 +569,9 @@ function renderPanel() {
     </section>
 
     <section class="p-section">
-      <h2 class="section-title">Deney</h2>
+      <h2 class="section-title">Deneyler</h2>
       ${experimentHtml()}
+      ${SIM.running.map(runningExperimentHtml).join('')}
     </section>
 
     <section class="p-section">

@@ -14,9 +14,28 @@ const MOODS = [
 ];
 
 const DEFAULT_TAGS = ['İş', 'Uyku', 'Spor', 'Aile', 'Arkadaşlar'];
+// Başlangıç akışında sunulan etiketler; seçilenler kayıt ekranında hazır gelir
+const TAG_CATALOG = [...DEFAULT_TAGS, 'Partner', 'Okul', 'Sağlık', 'Beslenme', 'Regl dönemi', 'Kendime zaman', 'Ekran süresi', 'Hava'];
+const TAG_PICK_MAX = 8;
 const STORAGE_KEY = 'ruh-hali-gunlugu:v1';
 const NOTE_MAX = 120;
 const TAG_MAX = 20;
+const REST_GAP = 7;          // iki dinlenme günü arasında en az bu kadar gün
+const FIRST_INSIGHT_AT = 3;  // ilk içgörünün açıldığı kayıt sayısı
+const EARLY_UNTIL = 7;       // bu kayıt sayısına kadar "erken gözlem" kartı gösterilir
+
+// Zor günlerde destek: son SUPPORT_WINDOW günün en az SUPPORT_MIN_LOW'unda ruh hali LOW_MOOD ya da altı
+const SUPPORT_WINDOW = 4;
+const SUPPORT_MIN_LOW = 3;
+const LOW_MOOD = 2;
+const SUPPORT_SNOOZE = 3;    // "Şimdi değil" denince kart bu kadar gün gösterilmez
+
+// Yardım kaynakları (Türkiye). Başka bir ülke için yalnızca bu liste değişir.
+const SUPPORT_RESOURCES = [
+  { name: 'Bir ruh sağlığı uzmanı', detail: 'Aile hekimin seni yönlendirebilir. Devlet hastanelerine bağlı Toplum Ruh Sağlığı Merkezleri de destek verir.' },
+  { name: 'ALO 183 Sosyal Destek Hattı', detail: 'Ücretsiz danışma ve yönlendirme', href: 'tel:183' },
+  { name: 'Acil durumda 112', detail: 'Kendine zarar verme düşüncen varsa hemen ara', href: 'tel:112', urgent: true },
+];
 
 // Pazartesi = 0
 const DAY_SHORT  = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -56,16 +75,16 @@ const storage = {
   load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { entries: {}, customTags: [] };
+      if (!raw) return { entries: {}, customTags: [], tagSet: null };
       const data = JSON.parse(raw);
-      return { entries: data.entries || {}, customTags: data.customTags || [] };
+      return { entries: data.entries || {}, customTags: data.customTags || [], tagSet: data.tagSet || null };
     } catch {
-      return { entries: {}, customTags: [] };
+      return { entries: {}, customTags: [], tagSet: null };
     }
   },
   save(state) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ entries: state.entries, customTags: state.customTags }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ entries: state.entries, customTags: state.customTags, tagSet: state.tagSet }));
       return true;
     } catch {
       return false;
@@ -77,13 +96,29 @@ const storage = {
    Hesaplamalar
    ========================================================= */
 
-/** Bugünden (bugün kayıt yoksa dünden) geriye kesintisiz kayıtlı gün sayısı. */
-function computeStreak(entries, today = startOfToday()) {
-  let d = entries[toKey(today)] ? today : addDays(today, -1);
-  let n = 0;
-  while (entries[toKey(d)]) { n++; d = addDays(d, -1); }
-  return n;
+/**
+ * Suçlamayan seri: bugünden (bugün kayıt yoksa dünden) geriye kayıtlı günler sayılır.
+ * Tek bir boş gün "dinlenme günü" sayılır ve seriyi bozmaz (en fazla REST_GAP günde bir);
+ * art arda iki boş gün seriyi bitirir. Dinlenme günleri seri sayısına eklenmez.
+ */
+function streakInfo(entries, today = startOfToday()) {
+  const has = (d) => Boolean(entries[toKey(d)]);
+  let d = has(today) ? today : addDays(today, -1);
+  let days = 0;
+  const restDays = [];
+  for (;;) {
+    if (has(d)) { days++; d = addDays(d, -1); continue; }
+    const prev = addDays(d, -1);
+    const lastRest = restDays.length ? fromKey(restDays[restDays.length - 1]) : null;
+    const spaced = !lastRest || Math.round((lastRest - d) / 864e5) >= REST_GAP;
+    if (!has(prev) || !spaced) break;
+    restDays.push(toKey(d));
+    d = prev;
+  }
+  return { days, restDays };
 }
+
+const computeStreak = (entries, today) => streakInfo(entries, today).days;
 
 /** [başlangıç, bitiş] aralığındaki kayıtlar (her ikisi dahil). */
 function entriesBetween(entries, from, to) {
@@ -105,16 +140,57 @@ function tagPhrase(tag) {
 }
 
 /**
+ * Zor günler: son SUPPORT_WINDOW günde (bugün dahil) en az SUPPORT_MIN_LOW düşük kayıt varsa
+ * { low, window } döner, yoksa null. Teşhis değildir; yalnızca destek kartını tetikler.
+ */
+function hardDays(entries, today = startOfToday()) {
+  const recent = entriesBetween(entries, addDays(today, -(SUPPORT_WINDOW - 1)), today);
+  const low = recent.filter((e) => e.mood <= LOW_MOOD).length;
+  return low >= SUPPORT_MIN_LOW ? { low, window: SUPPORT_WINDOW } : null;
+}
+
+/** İlk birkaç kayıt için tek kartlık gözlem. Örüntü iddia etmez, "erken gözlem" olarak işaretlenir. */
+function earlyInsight(list) {
+  const byDate = [...list].sort((a, b) => b.date.localeCompare(a.date));
+  const best = byDate.reduce((a, b) => (b.mood > a.mood ? b : a));
+  const worst = byDate.reduce((a, b) => (b.mood < a.mood ? b : a));
+  const tag = best.mood > worst.mood ? (best.tags || []).find((t) => !(worst.tags || []).includes(t)) : null;
+  const day = `${fmtDayMonth(fromKey(best.date))} ${DAY_NAME[weekdayIdx(fromKey(best.date))]}`;
+  const left = EARLY_UNTIL - list.length;
+  const basis = `${list.length} kayda dayanıyor · erken gözlem`;
+
+  if (tag) {
+    return {
+      tone: 'up', weight: 0.05,
+      title: `En iyi günün “${tag}” etiketliydi`,
+      body: `${day} kaydın “${moodOf(best.mood).label}” ve o gün “${tag}” etiketini seçmiştin. Bunun bir örüntü olup olmadığını ${left} kayıt sonra daha net göreceğiz.`,
+      basis,
+    };
+  }
+  return {
+    tone: 'neutral', weight: 0.05,
+    title: `İlk ${list.length} kaydının ortalaması ${fmtNum(avg(list.map((e) => e.mood)))}`,
+    body: best.mood > worst.mood
+      ? `En iyi günün ${day} (“${moodOf(best.mood).label}”). Etiket eklersen o günü neyin iyi yaptığını birlikte bulabiliriz.`
+      : `Şimdiye kadar hep “${moodOf(best.mood).label}” seçtin. Etiket eklersen günler arasındaki farkları birlikte bulabiliriz.`,
+    basis,
+  };
+}
+
+/**
  * Kural tabanlı içgörüler. Saf fonksiyon: aynı girdi → aynı çıktı.
  * İleride AI entegrasyonu bu fonksiyonun yerine geçebilir; dönen biçim
  * { tone: 'up'|'down'|'neutral', title, body, basis } olarak korunmalı.
  */
 function computeInsights(entries, today = startOfToday()) {
   const list = Object.values(entries);
-  if (list.length < 5) return [];
+  if (list.length < FIRST_INSIGHT_AT) return [];
 
   const overall = avg(list.map((e) => e.mood));
   const out = [];
+
+  // 0) Erken gözlem: kurallar için veri azken de ilk kayıtlardan bir şey söyle
+  if (list.length < EARLY_UNTIL) out.push(earlyInsight(list));
 
   // 1) Haftanın günleri
   const byDay = Array.from({ length: 7 }, () => []);
@@ -160,7 +236,7 @@ function computeInsights(entries, today = startOfToday()) {
     .forEach((t) => {
       const higher = t.diff > 0;
       out.push({
-        tone: higher ? 'up' : 'down', weight: Math.abs(t.diff),
+        tone: higher ? 'up' : 'down', weight: Math.abs(t.diff), tag: t.tag,
         title: `${tagPhrase(t.tag)} ruh halin daha ${higher ? 'yüksek' : 'düşük'}`,
         body: `Bu günlerde ortalaman ${fmtNum(t.withAvg)}, diğer günlerde ${fmtNum(t.withoutAvg)} (${higher ? '+' : '−'}${fmtNum(Math.abs(t.diff))} puan).`,
         basis: `${t.n} etiketli kayda dayanıyor`,
@@ -185,12 +261,12 @@ function computeInsights(entries, today = startOfToday()) {
   }
 
   // 4) Süreklilik
-  const streak = computeStreak(entries, today);
+  const { days: streak, restDays } = streakInfo(entries, today);
   if (streak >= 7) {
     out.push({
       tone: 'neutral', weight: 0,
-      title: `${streak} gündür aralıksız yazıyorsun`,
-      body: 'Düzenli kayıt tuttukça örüntüler daha güvenilir hale gelir.',
+      title: `${streak} gündür ${restDays.length ? 'düzenli' : 'aralıksız'} yazıyorsun`,
+      body: `${restDays.length ? 'Aradaki dinlenme günü serini bozmadı. ' : ''}Düzenli kayıt tuttukça örüntüler daha güvenilir hale gelir.`,
       basis: 'Seri sayacına dayanıyor',
     });
   }
@@ -219,7 +295,14 @@ const SAMPLE_NOTES = {
   5: ['Harika bir antrenman, enerjim çok yüksek.', 'Arkadaşlarla bol bol güldük.', 'Uzun zamandır bu kadar iyi hissetmemiştim.', 'Her şey yerine oturdu, çok mutluyum.'],
 };
 
-function generateSampleEntries(today = startOfToday()) {
+// "Zor günler" senaryosu: son üç gün düşük, destek kartı tetiklenir
+const HARD_DAYS = [
+  { i: 3, mood: 2, tags: ['İş', 'Uyku'], note: 'Gece uyuyamadım, gün boyu yorgundum.' },
+  { i: 2, mood: 1, tags: ['İş'], note: 'Hiçbir şeye gücüm yok gibi hissettim.' },
+  { i: 1, mood: 2, tags: ['Uyku'], note: 'Biraz daha iyi ama hâlâ çok ağır.' },
+];
+
+function generateSampleEntries(today = startOfToday(), { hard = false } = {}) {
   const rand = mulberry32(20261016);
   const pick = (arr) => arr[Math.floor(rand() * arr.length)];
   const entries = {};
@@ -248,7 +331,15 @@ function generateSampleEntries(today = startOfToday()) {
 
     const at = new Date(d);
     at.setHours(20 + Math.floor(rand() * 3), Math.floor(rand() * 60));
+    // Bir gün bilerek boş: suçlamayan serinin "dinlenme günü" örnekte de görünsün
+    if (i === 9) continue;
     entries[toKey(d)] = { date: toKey(d), mood, note, tags, updatedAt: at.toISOString() };
+  }
+  if (hard) {
+    HARD_DAYS.forEach(({ i, ...e }) => {
+      const key = toKey(addDays(today, -i));
+      entries[key] = { ...entries[key], ...e, date: key };
+    });
   }
   return entries;
 }
@@ -371,16 +462,21 @@ if (typeof document !== 'undefined') {
     calMonth: null,       // Takvimde gösterilen ayın ilk günü
     listLimit: 10,        // Son kayıtlar listesinde gösterilen kayıt sayısı
     selectedDay: null,
-    armed: null,          // İki adımlı onay bekleyen işlem ('sample' | 'clear')
+    armed: null,          // İki adımlı onay bekleyen işlem ('sample' | 'sample-hard' | 'clear')
     armedTimer: null,
     notesOn: false,       // Ürün notları modu (işe alımcı turu)
+    tagDraft: [],         // Etiket seçim ekranında işaretlenenler
+    onboarding: null,     // Başlangıç akışı bu oturumda başladıysa başlangıç zamanı (ms)
+    reminderAskSeen: false,
+    reminderDone: false,  // Hatırlatma az önce açıldı: onay kartı gösterilir
   };
 
   const $view = document.getElementById('view');
   const $toast = document.getElementById('toast');
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const allTags = () => [...DEFAULT_TAGS, ...state.customTags];
+  // Kullanıcının etiket seti (başlangıçta seçilen) yoksa varsayılanlar; özel etiketler sona eklenir
+  const allTags = () => [...new Set([...(state.tagSet || DEFAULT_TAGS), ...state.customTags])];
 
   function persist() {
     if (!storage.save(state)) toast('Kaydedilemedi: tarayıcı depolaması kullanılamıyor');
@@ -436,7 +532,193 @@ if (typeof document !== 'undefined') {
       aria-label="Ürün notu ${n.n}: ${esc(n.title)}">${n.n}</button>`;
   }
 
+  /* ---------- Akşam hatırlatması ---------- */
+
+  // Statik sitede (sunucusuz) bildirim yalnızca uygulama açıkken ya da arka planda açık dururken
+  // güvenilir. Bu yüzden iki kanal var: bildirim (varsa) + takvim (.ics), her telefonda çalışır.
+  const REMINDER_KEY = 'ruh-hali-gunlugu:reminder';
+  const reminder = { on: false, time: '21:00', asked: false };
+  try { Object.assign(reminder, JSON.parse(localStorage.getItem(REMINDER_KEY))); } catch { /* varsayılanlar */ }
+  const saveReminder = () => { try { localStorage.setItem(REMINDER_KEY, JSON.stringify(reminder)); } catch { /* yok say */ } };
+  const canNotify = () => 'Notification' in window && 'serviceWorker' in navigator && location.protocol.startsWith('http');
+  const notifyGranted = () => canNotify() && Notification.permission === 'granted';
+  let reminderTimer = null;
+
+  function scheduleReminder() {
+    clearTimeout(reminderTimer);
+    if (!reminder.on || !notifyGranted()) return;
+    const [h, m] = reminder.time.split(':').map(Number);
+    const at = new Date();
+    at.setHours(h, m, 0, 0);
+    if (at <= new Date()) at.setDate(at.getDate() + 1);
+    reminderTimer = setTimeout(async () => {
+      // Bugün zaten yazdıysa rahatsız etme
+      if (!state.entries[toKey(startOfToday())]) {
+        const reg = await navigator.serviceWorker.ready;
+        reg.showNotification('Bugün nasıldın?', {
+          body: 'Filiz seni bekliyor. 10 saniyelik kaydın yeter.',
+          icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', tag: 'daily-reminder',
+        });
+        analytics.track('reminder_fired', { channel: 'notification' });
+      }
+      scheduleReminder();
+    }, at - new Date());
+  }
+
+  /** Her gün seçilen saatte tekrarlayan takvim etkinliği (RFC 5545). */
+  function reminderIcs() {
+    const [h, m] = reminder.time.split(':');
+    const ymd = toKey(startOfToday()).replace(/-/g, '');
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+    const url = `${location.href.split('#')[0]}#bugun`;
+    return [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Ruh Hali Gunlugu//TR', 'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      `UID:hatirlatma-${ymd}-${h}${m}@ruh-hali-gunlugu`, `DTSTAMP:${stamp}`,
+      `DTSTART:${ymd}T${h}${m}00`, 'DURATION:PT5M', 'RRULE:FREQ=DAILY',
+      'SUMMARY:Ruh Hali Günlüğü: bugün nasıldın?',
+      `DESCRIPTION:10 saniyelik kaydını yap: ${url}`, `URL:${url}`,
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Bugün nasıldın?', 'TRIGGER:PT0M', 'END:VALARM',
+      'END:VEVENT', 'END:VCALENDAR',
+    ].join('\r\n');
+  }
+
+  function downloadIcs() {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([reminderIcs()], { type: 'text/calendar' }));
+    a.download = 'ruh-hali-hatirlatma.ics';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    analytics.track('reminder_calendar_added', { time: reminder.time });
+  }
+
+  async function enableReminder(from) {
+    reminder.on = true;
+    reminder.asked = true;
+    saveReminder();
+    // İzin ancak kullanıcı "Hatırlat" dedikten sonra istenir (önce yumuşak soru)
+    let permission = canNotify() ? Notification.permission : 'unsupported';
+    if (permission === 'default') permission = await Notification.requestPermission();
+    analytics.track('reminder_set', { time: reminder.time, permission, from });
+    scheduleReminder();
+    return permission;
+  }
+
+  /** Kayıttan hemen sonra, değeri gördüğü anda sorulan hatırlatma kartı. */
+  function reminderAsk() {
+    if (ui.reminderDone) {
+      const ok = notifyGranted();
+      return `
+        <section class="card remind" aria-live="polite">
+          <p class="remind-title">Hatırlatma açık · ${reminder.time}</p>
+          <p>${ok
+            ? 'Uygulama açıkken bildirim gelir. Telefon kapalıyken de garanti olsun istersen takvimine ekle.'
+            : `${canNotify() ? 'Bildirim izni verilmedi.' : 'Bu tarayıcıda bildirim kullanılamıyor.'} Takvimine eklersen her akşam telefonun hatırlatır.`}</p>
+          <div class="row">
+            <button class="btn btn-sm btn-primary" data-action="reminder-ics">Takvimime ekle</button>
+            <button class="btn btn-sm btn-quiet" data-action="reminder-close">Tamam</button>
+          </div>
+        </section>`;
+    }
+    if (reminder.asked || reminder.on || ui.editDate || !state.entries[toKey(startOfToday())]) return '';
+    if (!ui.reminderAskSeen) { ui.reminderAskSeen = true; analytics.track('reminder_prompt_shown'); }
+    return `
+      <section class="card remind">
+        ${pnote('reminder', { corner: true })}
+        <p class="remind-title">Yarın da hatırlatayım mı?</p>
+        <p>Her akşam tek bir hatırlatma; o gün yazdıysan sessiz kalır.</p>
+        <div class="row">
+          <label class="time-field"><span>Saat</span><input class="input" type="time" id="remind-time" value="${reminder.time}"></label>
+          <button class="btn btn-sm btn-primary" data-action="reminder-yes">Hatırlat</button>
+          <button class="btn btn-sm btn-quiet" data-action="reminder-no">Şimdi değil</button>
+        </div>
+      </section>`;
+  }
+
+  /* ---------- Telefona yükleme (PWA) ---------- */
+
+  let installPrompt = null;
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  window.addEventListener('beforeinstallprompt', (ev) => {
+    ev.preventDefault();
+    installPrompt = ev;
+    if (ui.view === 'settings') render();
+  });
+  window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    analytics.track('app_installed');
+    if (ui.view === 'settings') render();
+  });
+
+  function installRow() {
+    if (isStandalone()) return '<p class="install-note">Uygulama bu cihaza yüklü.</p>';
+    if (installPrompt) return '<button class="btn btn-sm btn-ghost" data-action="install">Ana ekrana ekle</button>';
+    if (isIos()) return '<p class="install-note">Safari’de <strong>Paylaş</strong> → <strong>Ana Ekrana Ekle</strong> ile uygulama gibi açılır.</p>';
+    if (!location.protocol.startsWith('http')) return '<p class="install-note">Yükleme, yayındaki sitede (GitHub Pages) çalışır.</p>';
+    return '<p class="install-note">Tarayıcının menüsünden “Uygulamayı yükle” ya da “Ana ekrana ekle” ile yükleyebilirsin.</p>';
+  }
+
+  /* ---------- Zor günlerde destek ---------- */
+
+  const SUPPORT_KEY = 'ruh-hali-gunlugu:support-snoozed';
+  let supportSnoozedAt = null;   // depolama yoksa yalnızca bu oturumda hatırlanır
+  const supportSeen = new Set(); // aynı ekranda gösterimi oturum başına bir kez say
+
+  function supportSnoozed() {
+    let at = supportSnoozedAt;
+    try { at = localStorage.getItem(SUPPORT_KEY) || at; } catch { /* yok say */ }
+    return Boolean(at) && Math.round((startOfToday() - fromKey(at)) / 864e5) < SUPPORT_SNOOZE;
+  }
+
+  function supportCard(where) {
+    const hd = hardDays(state.entries);
+    if (!hd || supportSnoozed()) return '';
+    if (!supportSeen.has(where)) {
+      supportSeen.add(where);
+      analytics.track('support_shown', { where, low: hd.low });
+    }
+    // Kişisel bir ipucu: kayıtlarına göre iyi gelen bir etiket varsa onu hatırlat
+    const lift = computeInsights(state.entries).find((ins) => ins.tag && ins.tone === 'up');
+    const resources = SUPPORT_RESOURCES.map((r) => {
+      const inner = `<strong>${r.name}</strong><small>${r.detail}</small>`;
+      return r.href
+        ? `<li><a class="support-res${r.urgent ? ' is-urgent' : ''}" href="${r.href}" data-support="${r.href}">${inner}<span class="support-call">Ara</span></a></li>`
+        : `<li><div class="support-res">${inner}</div></li>`;
+    }).join('');
+    return `
+      <section class="card support" aria-labelledby="support-title">
+        ${pnote('support', { corner: true })}
+        <p class="support-title" id="support-title">Son günler zor geçiyor gibi</p>
+        <p>Son ${hd.window} günün ${hd.low}’ünde kendini kötü hissettiğini yazdın. Bunu fark etmek önemli. Bu duyguları tek başına taşımak zorunda değilsin; güvendiğin biriyle konuşmak iyi gelebilir.</p>
+        ${lift ? `<p class="support-tip">${tagPhrase(lift.tag)} ruh halin daha yüksek oluyor. Bugün bunun küçük bir versiyonu iyi gelebilir.</p>` : ''}
+        ${where === 'today'
+          // Bugün ekranında temel eylemi (kayıt) aşağı itmesin: kaynaklar tek dokunuşla açılır
+          ? `<details class="support-more"><summary>Destek kaynakları</summary><ul class="support-list">${resources}</ul></details>`
+          : `<ul class="support-list">${resources}</ul>`}
+        <button class="btn btn-quiet btn-sm" data-action="support-snooze">Şimdi değil</button>
+      </section>`;
+  }
+
+  /** Hiç kayıt yokken Bugün ekranında ilk kayda yönlendiren şerit (başlangıç akışının 2. adımı). */
+  function firstEntryCoach() {
+    if (Object.keys(state.entries).length) return '';
+    return `
+      <div class="coach">
+        ${ui.onboarding ? '<div class="steps" role="img" aria-label="Adım 2 / 2"><i class="on"></i><i class="on"></i></div>' : ''}
+        <p><strong>${ui.onboarding ? 'Adım 2 / 2 · ' : ''}İlk kaydın</strong>Ruh halini seç, istersen tek cümle ekle ve kaydet. 10 saniye sürer.</p>
+      </div>`;
+  }
+
   /* ---------- Kayıt formu durumu ---------- */
+
+  /** Bugün henüz kayıt yok ve dün seriyi koruyan bir dinlenme günü mü? */
+  function restedYesterday() {
+    const today = startOfToday();
+    if (state.entries[toKey(today)]) return false;
+    return streakInfo(state.entries, today).restDays[0] === toKey(addDays(today, -1));
+  }
 
   function formState() {
     const existing = state.entries[activeKey()];
@@ -446,7 +728,7 @@ if (typeof document !== 'undefined') {
     let hint = '';
     if (ui.editDate) hint = existing ? 'Değişiklikler bu günün kaydına işlenir.' : 'Bu gün için yeni kayıt ekliyorsun.';
     else if (existing) hint = `Bugün kaydedildi (${fmtTime(existing.updatedAt)}). Dilediğin zaman güncelleyebilirsin.`;
-    else if (!d.mood) hint = 'Kaydetmek için Filiz’i kaydırarak ruh halini seç.';
+    else if (!d.mood) hint = restedYesterday() ? 'Dün dinlenme günündü, serin bozulmadı. Filiz’i kaydırarak bugünü ekle.' : 'Kaydetmek için Filiz’i kaydırarak ruh halini seç.';
     else if (streak > 0) hint = `Kaydedersen serin ${streak + 1} güne çıkar.`;
     return {
       disabled: !d.mood || unchanged,
@@ -551,13 +833,15 @@ if (typeof document !== 'undefined') {
     const isPast = Boolean(ui.editDate);
     const date = isPast ? fromKey(ui.editDate) : today;
     const existing = state.entries[activeKey()];
-    const streak = computeStreak(state.entries, today);
+    const { days: streak, restDays } = streakInfo(state.entries, today);
     const d = ui.draft;
+    const streakTitle = [existing ? 'Bugün dahil' : 'Bugün kaydedersen seri devam eder',
+      restDays.length ? `${restDays.length} dinlenme günü serini bozmadı` : ''].filter(Boolean).join(' · ');
 
     const badgeHtml = isPast
       ? `<a class="back-link" href="#gecmis" data-action="back">${chevron('left')}<span>Geçmiş</span></a>`
       : streak > 0
-      ? `<span class="streak" title="${existing ? 'Bugün dahil' : 'Bugün kaydedersen seri devam eder'}">
+      ? `<span class="streak" title="${streakTitle}">
            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8.6 1.2c.3 2.2-1.4 3.2-2.4 4.6C5.4 6.9 5 8 5.2 9.2c-.6-.4-1-1.1-1.1-1.9C3.4 8.4 3 9.6 3 10.6 3 13.3 5.2 15 8 15s5-1.8 5-4.6c0-3.5-2.8-5-4.4-9.2Z"/></svg>
            <span><strong>${streak}</strong> gün seri</span>
          </span>`
@@ -608,7 +892,7 @@ if (typeof document !== 'undefined') {
       <header class="top">
         ${isPast ? badgeHtml : `<p class="eyebrow"><strong>${greeting()}</strong> · ${fmtDayMonth(date)}, ${DAY_NAME[weekdayIdx(date)]}</p><span class="top-end">${pnote('streak')}${badgeHtml}</span>`}
       </header>
-      ${isPast ? `<p class="eyebrow eyebrow-lead">${fmtLongDate(date)}</p>` : ''}
+      ${isPast ? `<p class="eyebrow eyebrow-lead">${fmtLongDate(date)}</p>` : supportCard('today') + firstEntryCoach()}
       <h1 class="title">${isPast ? 'O gün nasıl hissediyordun?' : 'Bugün nasıl hissediyorsun?'}</h1>
 
       ${pickerHtml}
@@ -629,7 +913,8 @@ if (typeof document !== 'undefined') {
         <button class="btn btn-primary btn-block${form.saved ? ' btn-saved' : ''}" data-action="save" ${form.disabled ? 'disabled' : ''}>${saveButtonInner(form)}</button>
         <p class="save-hint" ${form.hint ? '' : 'hidden'}>${form.hint}</p>
         ${deleteHtml}
-      </div>`;
+      </div>
+      ${isPast ? '' : reminderAsk()}`;
   }
 
   /* ---------- İçgörü ---------- */
@@ -714,17 +999,20 @@ if (typeof document !== 'undefined') {
           </article>`;
         }).join('')}</div>`
       : `<div class="card empty">
-          <div class="empty-filiz">${filizSvg(total < 5 ? 3 : 4)}</div>
-          <h3>${total < 5 ? 'Örüntüler için biraz daha kayıt lazım' : 'Henüz belirgin bir örüntü yok'}</h3>
-          <p>${total < 5
-            ? `İlk içgörüler 5 kayıttan sonra görünür. Şu an ${total} kaydın var.`
+          <div class="empty-filiz">${filizSvg(total < FIRST_INSIGHT_AT ? 3 : 4)}</div>
+          <h3>${total < FIRST_INSIGHT_AT ? 'İlk içgörün yolda' : 'Henüz belirgin bir örüntü yok'}</h3>
+          <p>${total < FIRST_INSIGHT_AT
+            ? `İlk içgörün ${FIRST_INSIGHT_AT}. kayıtta açılır. ${FIRST_INSIGHT_AT - total} kayıt kaldı.`
             : 'Kayıt ekledikçe günler ve etiketler arasındaki farklar burada belirecek.'}</p>
-          ${total < 5 ? '<button class="btn btn-ghost btn-sm" data-action="sample">Örnek veriyle dene</button>' : ''}
+          ${total < FIRST_INSIGHT_AT ? `<div class="unlock" role="img" aria-label="${total} / ${FIRST_INSIGHT_AT} kayıt">${
+            Array.from({ length: FIRST_INSIGHT_AT }, (_, i) => `<i${i < total ? ' class="on"' : ''}></i>`).join('')}</div>
+            <button class="btn btn-ghost btn-sm" data-action="sample">Örnek veriyle dene</button>` : ''}
         </div>`;
 
     return `
       <header class="top"><p class="eyebrow">Son 7 gün</p></header>
       <h1 class="title">Haftalık içgörü</h1>
+      ${supportCard('insights')}
 
       <section class="card has-note" aria-label="Son 7 günün ruh hali">
         ${pnote('weekly', { corner: true })}
@@ -760,14 +1048,14 @@ if (typeof document !== 'undefined') {
       </${tag}>`;
   }
 
-  function emptyDayCard(key) {
+  function emptyDayCard(key, rest = false) {
     const d = fromKey(key);
     return `
-      <div class="card entry entry-missing">
+      <div class="card entry entry-missing${rest ? ' is-rest' : ''}">
         <span class="entry-swatch" aria-hidden="true"></span>
         <div>
           <div class="entry-head"><span class="entry-date">${fmtDayMonth(d)}, ${DAY_NAME[weekdayIdx(d)]}</span></div>
-          <p class="entry-note empty-note">Bu gün için kayıt yok</p>
+          <p class="entry-note empty-note">${rest ? 'Dinlenme günü · serin bozulmadı' : 'Bu gün için kayıt yok'}</p>
         </div>
         <button class="btn btn-ghost btn-sm" data-action="edit" data-key="${key}">Kayıt ekle</button>
       </div>`;
@@ -779,6 +1067,7 @@ if (typeof document !== 'undefined') {
     const first = new Date(month.getFullYear(), month.getMonth(), 1);
     const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
     const isCurrentMonth = first.getFullYear() === today.getFullYear() && first.getMonth() === today.getMonth();
+    const restDays = new Set(streakInfo(state.entries, today).restDays);
 
     let cells = DAY_SHORT.map((d) => `<span class="cal-wd">${d}</span>`).join('');
     cells += '<span></span>'.repeat(weekdayIdx(first));
@@ -788,10 +1077,11 @@ if (typeof document !== 'undefined') {
       const e = state.entries[key];
       const cls = ['cal-day'];
       if (e) cls.push('has-entry');
+      if (restDays.has(key)) cls.push('is-rest');
       if (key === toKey(today)) cls.push('is-today');
       if (d > today) cls.push('is-future');
       if (key === ui.selectedDay) cls.push('is-selected');
-      const label = `${fmtDayMonth(d)}: ${e ? moodOf(e.mood).label : 'kayıt yok'}`;
+      const label = `${fmtDayMonth(d)}: ${e ? moodOf(e.mood).label : restDays.has(key) ? 'dinlenme günü' : 'kayıt yok'}`;
       cells += `<button class="${cls.join(' ')}" data-action="day" data-key="${key}" aria-label="${label}"
         ${e ? `style="--c:${moodOf(e.mood).color}"` : ''} ${d > today ? 'disabled' : ''}>${n}</button>`;
     }
@@ -799,7 +1089,7 @@ if (typeof document !== 'undefined') {
     const legend = MOODS.map((m) => `<span><i class="dot" style="--c:${m.color}"></i>${m.label}</span>`).join('');
     const selectedHtml = !ui.selectedDay ? ''
       : state.entries[ui.selectedDay] ? entryCard(state.entries[ui.selectedDay], 'div')
-      : emptyDayCard(ui.selectedDay);
+      : emptyDayCard(ui.selectedDay, restDays.has(ui.selectedDay));
     const all = Object.values(state.entries).sort((a, b) => b.date.localeCompare(a.date));
     const recent = all.slice(0, ui.listLimit);
     const hasData = all.length > 0;
@@ -817,7 +1107,7 @@ if (typeof document !== 'undefined') {
           <button class="icon-btn" data-action="month" data-dir="1" aria-label="Sonraki ay" ${isCurrentMonth ? 'disabled' : ''}>${chevron('right')}</button>
         </div>
         <div class="cal-grid">${cells}</div>
-        <div class="legend">${legend}</div>
+        <div class="legend">${legend}${restDays.size ? '<span><i class="dot dot-rest"></i>Dinlenme günü</span>' : ''}</div>
       </section>
 
       ${selectedHtml ? `<div class="detail">${selectedHtml}</div>` : ''}
@@ -839,6 +1129,7 @@ if (typeof document !== 'undefined') {
   function renderSettings() {
     const count = Object.keys(state.entries).length;
     const sampleLabel = ui.armed === 'sample' ? 'Mevcut kayıtlar silinecek, onayla' : 'Örnek veri yükle';
+    const hardLabel = ui.armed === 'sample-hard' ? 'Mevcut kayıtlar silinecek, onayla' : 'Zor günler senaryosu';
     const clearLabel = ui.armed === 'clear' ? 'Emin misin? Tekrar dokun' : 'Tüm verileri sil';
     const arrow = chevron('right');
 
@@ -861,6 +1152,32 @@ if (typeof document !== 'undefined') {
         </a>
       </section>
 
+      <h2 class="section-title">Günlüğün</h2>
+      <section class="card settings-list">
+        <a class="settings-row" href="#etiketler">
+          <span><strong>Etiketlerin</strong><small>${esc(allTags().join(', '))}</small></span>${arrow}
+        </a>
+      </section>
+
+      <h2 class="section-title">Hatırlatma ve uygulama ${pnote('reminder')}</h2>
+      <section class="card settings-list">
+        <button class="settings-row" type="button" role="switch" aria-checked="${reminder.on}" data-action="reminder-toggle">
+          <span><strong>Akşam hatırlatması</strong><small>${reminder.on
+            ? (notifyGranted() ? `Her gün ${reminder.time} · bildirim açık` : `Her gün ${reminder.time} · takvimle`)
+            : 'Kapalı'}</small></span>
+          <i class="switch" aria-hidden="true"></i>
+        </button>
+        ${reminder.on ? `
+        <div class="settings-sub">
+          <label class="time-field"><span>Saat</span><input class="input" type="time" id="remind-time" value="${reminder.time}"></label>
+          <button class="btn btn-sm btn-ghost" data-action="reminder-ics">Takvimime ekle</button>
+        </div>` : ''}
+        <div class="settings-sub">
+          <span class="settings-sub-label"><strong>Telefona yükle</strong><small>Ana ekrandan açılır, çevrimdışı çalışır</small></span>
+          ${installRow()}
+        </div>
+      </section>
+
       <h2 class="section-title">Demo ve veriler ${pnote('privacy')}</h2>
       <section class="card data-tools">
         <p>${count ? `Bu tarayıcıda <strong>${count} kayıt</strong> var.` : 'Henüz kayıt yok.'} Uygulamayı denemek için 3 haftalık örnek veri yükleyebilirsin.</p>
@@ -868,12 +1185,16 @@ if (typeof document !== 'undefined') {
           <button class="btn btn-sm ${ui.armed === 'sample' ? 'btn-primary' : 'btn-ghost'}" data-action="sample">${sampleLabel}</button>
           ${count ? `<button class="btn btn-sm ${ui.armed === 'clear' ? 'btn-danger-armed' : 'btn-quiet'}" data-action="clear">${clearLabel}</button>` : ''}
         </div>
+        <p class="data-sub">Destek kartını görmek için son üç günü zor geçmiş bir senaryo da yükleyebilirsin.</p>
+        <div class="row">
+          <button class="btn btn-sm ${ui.armed === 'sample-hard' ? 'btn-primary' : 'btn-ghost'}" data-action="sample-hard">${hardLabel}</button>
+        </div>
       </section>
 
       <h2 class="section-title">Gizlilik</h2>
       <section class="card settings-about">
         <p>Kayıtların yalnızca bu cihazda, bu tarayıcıda saklanır. Hesap yok, hiçbir sunucuya veri gönderilmez.</p>
-        <p class="muted small">Ruh Hali Günlüğü · Sürüm 1.0</p>
+        <p class="muted small">Ruh Hali Günlüğü · Sürüm 1.1</p>
       </section>`;
   }
 
@@ -902,7 +1223,7 @@ if (typeof document !== 'undefined') {
             <span class="choice-sub">Metrikler, deney ve yol haritası · 2 dk</span>
           </button>
         </div>
-        <button class="btn btn-link" data-action="welcome-empty">Boş bir günlükle başla</button>
+        <button class="btn btn-link" data-action="welcome-empty">Kendi günlüğünü başlat</button>
         <p class="welcome-foot">Tüm veriler yalnızca bu tarayıcıda saklanır.</p>
       </section>`;
   }
@@ -912,6 +1233,36 @@ if (typeof document !== 'undefined') {
     state.entries = generateSampleEntries();
     persist();
     analytics.track('sample_loaded', { from: 'welcome' });
+  }
+
+  /* ---------- Başlangıç: etiket seçimi (Ayarlar'dan düzenleme için de kullanılır) ---------- */
+
+  const TAG_ORDER = () => [...new Set([...TAG_CATALOG, ...state.customTags])];
+  const tagCountText = () => (ui.tagDraft.length ? `${ui.tagDraft.length} etiket seçildi` : '3-5 etiket iyi bir başlangıç');
+
+  function renderTagPicker() {
+    const editing = ui.view === 'tags';
+    const chips = TAG_ORDER().map((t) => `
+      <button class="chip" aria-pressed="${ui.tagDraft.includes(t)}" data-action="pick-tag" data-tag="${esc(t)}">${esc(t)}</button>`).join('');
+    return `
+      <section class="onboard">
+        ${editing
+          ? `<a class="back-link" href="#ayarlar">${chevron('left')}<span>Ayarlar</span></a>`
+          : `<div class="steps" role="img" aria-label="Adım 1 / 2"><i class="on"></i><i></i></div>
+             <p class="eyebrow">Adım 1 / 2 ${pnote('onboarding')}</p>`}
+        <h1 class="title">${editing ? 'Etiketlerin' : 'Günlerini en çok ne etkiliyor?'}</h1>
+        <p class="onboard-lead">Seçtiklerin kayıt ekranında hazır gelir; içgörüler bu etiketlerden çıkar.${editing ? '' : ' Sonra Ayarlar’dan değiştirebilirsin.'}</p>
+        <div class="chips onboard-chips" role="group" aria-label="Etiketler">${chips}</div>
+        <p class="onboard-count" aria-live="polite">${tagCountText()}</p>
+        <button class="btn btn-primary btn-block" data-action="tags-done" ${ui.tagDraft.length ? '' : 'disabled'}>${editing ? 'Kaydet' : 'Devam et'}</button>
+        ${editing ? '' : '<button class="btn btn-link" data-action="tags-skip">Şimdilik atla</button>'}
+      </section>`;
+  }
+
+  /** Ekranı yeniden çizmeden sayaç ve düğmeyi günceller (seçim sırasında odak kaybolmasın). */
+  function refreshTagPicker() {
+    $view.querySelector('.onboard-count').textContent = tagCountText();
+    $view.querySelector('[data-action="tags-done"]').disabled = !ui.tagDraft.length;
   }
 
   /* ---------- Not kartı ---------- */
@@ -944,9 +1295,9 @@ if (typeof document !== 'undefined') {
 
   /* ---------- Yönlendirme ve çizim ---------- */
 
-  const ROUTES = { bugun: 'today', icgoru: 'insights', gecmis: 'history', ayarlar: 'settings', hosgeldin: 'welcome', panel: 'panel' };
-  const RENDER = { today: renderToday, insights: renderInsights, history: renderHistory, settings: renderSettings, welcome: renderWelcome, panel: renderPanel };
-  const STANDALONE = ['welcome', 'panel']; // Alt menü ve not düğmesi olmadan gösterilen ekranlar
+  const ROUTES = { bugun: 'today', icgoru: 'insights', gecmis: 'history', ayarlar: 'settings', hosgeldin: 'welcome', panel: 'panel', baslangic: 'onboarding', etiketler: 'tags' };
+  const RENDER = { today: renderToday, insights: renderInsights, history: renderHistory, settings: renderSettings, welcome: renderWelcome, panel: renderPanel, onboarding: renderTagPicker, tags: renderTagPicker };
+  const STANDALONE = ['welcome', 'panel', 'onboarding', 'tags']; // Alt menü ve not düğmesi olmadan gösterilen ekranlar
 
   function render({ enter = false } = {}) {
     const standalone = STANDALONE.includes(ui.view);
@@ -990,6 +1341,8 @@ if (typeof document !== 'undefined') {
     ui.editDate = editDate;
     disarm();
     if (view === 'today') resetDraft();
+    // Başlangıçta boş başlar (bilinçli seçim); düzenlerken mevcut set seçili gelir
+    if (view === 'onboarding' || view === 'tags') ui.tagDraft = view === 'tags' ? allTags() : [...(state.tagSet || [])];
     if (view === 'history' && (!ui.keepHistory || !ui.calMonth)) {
       ui.calMonth = new Date(startOfToday().getFullYear(), startOfToday().getMonth(), 1);
       ui.selectedDay = null;
@@ -1049,6 +1402,69 @@ if (typeof document !== 'undefined') {
     'welcome-empty'() {
       markWelcomed();
       analytics.track('welcome_choice', { choice: 'empty' });
+      ui.onboarding = Date.now();
+      location.hash = '#baslangic';
+    },
+    async 'reminder-yes'() {
+      ui.reminderDone = true;
+      await enableReminder('prompt');
+      render();
+    },
+    'reminder-no'() {
+      reminder.asked = true;
+      saveReminder();
+      analytics.track('reminder_declined');
+      render();
+      toast('Tamam. İstersen Ayarlar’dan açabilirsin.');
+    },
+    'reminder-close'() {
+      ui.reminderDone = false;
+      render();
+    },
+    'reminder-ics'() {
+      downloadIcs();
+      toast('Takvim dosyası indirildi; açınca takvimine eklenir');
+    },
+    async 'reminder-toggle'() {
+      if (reminder.on) {
+        reminder.on = false;
+        saveReminder();
+        clearTimeout(reminderTimer);
+        analytics.track('reminder_off');
+      } else {
+        const permission = await enableReminder('settings');
+        if (permission !== 'granted') toast('Bildirim yok; “Takvimime ekle” ile her akşam hatırlatma alabilirsin');
+      }
+      render();
+    },
+    async install() {
+      if (!installPrompt) return;
+      installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      analytics.track('install_prompt', { outcome });
+      installPrompt = null;
+      render();
+    },
+    'pick-tag'(el) {
+      const tag = el.dataset.tag;
+      const on = !ui.tagDraft.includes(tag);
+      if (on && ui.tagDraft.length >= TAG_PICK_MAX) return toast(`En fazla ${TAG_PICK_MAX} etiket seçebilirsin`);
+      ui.tagDraft = on ? [...ui.tagDraft, tag] : ui.tagDraft.filter((t) => t !== tag);
+      el.setAttribute('aria-pressed', String(on));
+      refreshTagPicker();
+    },
+    'tags-done'() {
+      const picked = TAG_ORDER().filter((t) => ui.tagDraft.includes(t));
+      state.tagSet = picked;
+      state.customTags = state.customTags.filter((t) => picked.includes(t));
+      persist();
+      const editing = ui.view === 'tags';
+      analytics.track('tags_chosen', { count: picked.length, from: editing ? 'settings' : 'onboarding' });
+      if (editing) { toast('Etiketlerin güncellendi'); location.hash = '#ayarlar'; return; }
+      location.hash = '#bugun';
+    },
+    'tags-skip'() {
+      analytics.track('tags_chosen', { count: 0, skipped: true, from: 'onboarding' });
       location.hash = '#bugun';
     },
     tour() {
@@ -1073,11 +1489,22 @@ if (typeof document !== 'undefined') {
       if (!d.mood) return;
       const key = activeKey();
       const isUpdate = Boolean(state.entries[key]);
+      const afterRest = !ui.editDate && restedYesterday();
       state.entries[key] = { date: key, mood: d.mood, note: d.note.trim(), tags: [...d.tags], updatedAt: new Date().toISOString() };
       persist();
-      analytics.track('entry_saved', { mood: d.mood, isUpdate, past: Boolean(ui.editDate), hasNote: Boolean(d.note.trim()), tagCount: d.tags.length });
+      analytics.track('entry_saved', { mood: d.mood, isUpdate, past: Boolean(ui.editDate), hasNote: Boolean(d.note.trim()), tagCount: d.tags.length, afterRest });
+      // Aktivasyon anı: kullanıcı ilk içgörüye ulaştı
+      const total = Object.keys(state.entries).length;
+      const unlocked = !isUpdate && total === FIRST_INSIGHT_AT;
+      if (unlocked) analytics.track('first_insight_unlocked', { entries: total });
+      const first = !isUpdate && total === 1;
+      if (first && ui.onboarding) {
+        analytics.track('onboarding_completed', { ms: Date.now() - ui.onboarding });
+        ui.onboarding = null;
+      }
       if (ui.editDate) {
-        toast(isUpdate ? `${fmtDayMonth(fromKey(key))} kaydı güncellendi` : `${fmtDayMonth(fromKey(key))} için kayıt eklendi`);
+        toast(unlocked ? 'Kayıt eklendi · İlk içgörün hazır'
+          : isUpdate ? `${fmtDayMonth(fromKey(key))} kaydı güncellendi` : `${fmtDayMonth(fromKey(key))} için kayıt eklendi`);
         backToHistory();
         return;
       }
@@ -1086,7 +1513,11 @@ if (typeof document !== 'undefined') {
       // Kayıt anı: Filiz sevinçle zıplar
       $view.querySelector('.picker .filiz')?.classList.add('hop');
       const streak = computeStreak(state.entries);
-      toast(isUpdate ? 'Kaydın güncellendi' : `Kaydedildi · ${streak} gün seri`);
+      toast(isUpdate ? 'Kaydın güncellendi'
+        : unlocked ? 'Kaydedildi · İlk içgörün hazır, İçgörü sekmesine bak'
+        : first ? `İlk kaydın tamam · ${FIRST_INSIGHT_AT - 1} kayıt sonra ilk içgörün açılır`
+        : afterRest ? `Tekrar hoş geldin · ${streak} gün seri sürüyor`
+        : `Kaydedildi · ${streak} gün seri`);
     },
     delete() {
       const key = activeKey();
@@ -1135,11 +1566,31 @@ if (typeof document !== 'undefined') {
       location.hash = '#icgoru';
       if (ui.view === 'insights') render();
     },
+    'sample-hard'() {
+      if (Object.keys(state.entries).length && ui.armed !== 'sample-hard') return arm('sample-hard');
+      disarm();
+      state.entries = generateSampleEntries(startOfToday(), { hard: true });
+      persist();
+      supportSnoozedAt = null;
+      try { localStorage.removeItem(SUPPORT_KEY); } catch { /* yok say */ }
+      analytics.track('sample_loaded', { from: ui.view, scenario: 'hard' });
+      toast('Zor günler senaryosu yüklendi');
+      location.hash = '#bugun';
+      if (ui.view === 'today') render();
+    },
+    'support-snooze'() {
+      supportSnoozedAt = toKey(startOfToday());
+      try { localStorage.setItem(SUPPORT_KEY, supportSnoozedAt); } catch { /* yok say */ }
+      analytics.track('support_dismissed', { where: ui.view });
+      render();
+      toast(`Tamam. Bu kart ${SUPPORT_SNOOZE} gün görünmeyecek.`);
+    },
     clear() {
       if (ui.armed !== 'clear') return arm('clear');
       disarm();
       state.entries = {};
       state.customTags = [];
+      state.tagSet = null;
       persist();
       ui.selectedDay = null;
       render();
@@ -1152,6 +1603,20 @@ if (typeof document !== 'undefined') {
     if (!el || !$view.contains(el)) return;
     const fn = actions[el.dataset.action];
     if (fn) { ev.preventDefault(); fn(el); }
+  });
+
+  // Destek kaynakları gerçek bağlantılardır (tel:); yalnızca dokunma ölçülür, içerik değil
+  $view.addEventListener('click', (ev) => {
+    const link = ev.target.closest('[data-support]');
+    if (link) analytics.track('support_resource_tapped', { resource: link.dataset.support });
+  });
+
+  $view.addEventListener('change', (ev) => {
+    if (ev.target.id !== 'remind-time' || !ev.target.value) return;
+    reminder.time = ev.target.value;
+    saveReminder();
+    scheduleReminder();
+    if (reminder.on) analytics.track('reminder_set', { time: reminder.time, from: 'time_change' });
   });
 
   $view.addEventListener('input', (ev) => {
@@ -1252,4 +1717,9 @@ if (typeof document !== 'undefined') {
 
   window.addEventListener('hashchange', onRoute);
   onRoute();
+
+  // PWA: yalnızca http(s) üzerinde (file:// ile açıldığında service worker çalışmaz)
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').then(scheduleReminder).catch(() => { /* çevrimdışı destek olmadan da çalışır */ });
+  }
 }
