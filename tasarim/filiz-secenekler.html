@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Filiz · Maskot seçenekleri</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Fraunces:opsz,wght,SOFT@9..144,400..600,0..100&display=swap">
+<style>
+  :root { --bg:#EAE7DC; --surface:#F5F2E9; --surface-2:#ECE8DD; --ink:#2A302B; --muted:#6C6E64; --faint:#9C998C; --line:#E0DACB; --accent:#2F6B5E; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; background: radial-gradient(120% 60% at 0% 0%, rgba(239,211,186,.45), transparent 60%), var(--bg); color:var(--ink); font-family:"DM Sans", system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 20px 60px; }
+  h1, h2 { font-family:"Fraunces", Georgia, serif; font-variation-settings:"SOFT" 100; font-weight:500; }
+  h1 { font-size: 34px; margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 28px; }
+  .card { background: var(--surface); border:1px solid rgba(224,218,203,.6); border-radius: 24px; padding: 22px; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(74,60,40,.04), 0 12px 32px -20px rgba(74,60,40,.28); }
+  .head { display:flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 12px; font-weight:600; color: var(--accent); background:#DCE5DA; padding: 3px 10px; border-radius: 999px; }
+  h2 { font-size: 22px; margin: 0; }
+  .desc { color: var(--muted); font-size: 14px; margin: 6px 0 16px; }
+  .label { font-size: 12px; font-weight:600; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; margin: 14px 0 8px; }
+  .row { display:grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .row.stages { grid-template-columns: repeat(3, 1fr); max-width: 420px; }
+  .cell { display:flex; flex-direction:column; align-items:center; gap: 4px; background: var(--surface-2); border-radius: 18px; padding: 10px 4px 8px; }
+  .cell svg { width: 100%; max-width: 84px; height: auto; }
+  .cell span { font-size: 12px; color: var(--muted); }
+  .pros { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  .pros li::before { content: "·"; margin-right: 8px; color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Filiz için üç yön</h1>
+  <p class="lead">Her tasarım seçilen ruh haline göre renk ve ifade değiştiriyor, seri ilerledikçe büyüyor.</p>
+  <div id="variants"></div>
+</main>
+
+<script>
+const MOODS = [
+  { label: 'Çok kötü', color: '#C9B8D9' },
+  { label: 'Kötü',     color: '#B7CCE3' },
+  { label: 'İdare',    color: '#E8D9A8' },
+  { label: 'İyi',      color: '#BFDCC2' },
+  { label: 'Harika',   color: '#8FC7A6' },
+];
+const INK = '#2A302B';
+const LEAF = '#6FA58A';
+const LEAF_DARK = '#5A8F76';
+const PETAL = '#F2BFA8';
+const POLLEN = '#E8C46A';
+
+function face(cx, cy, s, mood) {
+  const eyeY = cy - 3 * s;
+  let eyes;
+  if (mood === 5) {
+    eyes = [-8, 8].map((dx) => `<path d="M${cx + dx * s - 3 * s} ${eyeY + 1 * s} Q${cx + dx * s} ${eyeY - 3 * s} ${cx + dx * s + 3 * s} ${eyeY + 1 * s}" fill="none" stroke="${INK}" stroke-width="${1.8 * s}" stroke-linecap="round"/>`).join('');
+  } else {
+    eyes = [-8, 8].map((dx) => `<circle cx="${cx + dx * s}" cy="${eyeY}" r="${2.3 * s}" fill="${INK}"/>`).join('');
+  }
+  let brows = '';
+  if (mood === 1) {
+    brows = `<path d="M${cx - 11 * s} ${eyeY - 5 * s} L${cx - 5 * s} ${eyeY - 7 * s}" stroke="${INK}" stroke-width="${1.6 * s}" stroke-linecap="round" opacity=".7"/>
+             <path d="M${cx + 11 * s} ${eyeY - 5 * s} L${cx + 5 * s} ${eyeY - 7 * s}" stroke="${INK}" stroke-width="${1.6 * s}" stroke-linecap="round" opacity=".7"/>`;
+  }
+  const c = [-3.5, -1.8, 0, 2.4, 4.2][mood - 1] * s;
+  const my = cy + 5 * s;
+  const w = (mood === 5 ? 6.5 : 5.5) * s;
+  const mouth = `<path d="M${cx - w} ${my - c / 2} Q${cx} ${my + c} ${cx + w} ${my - c / 2}" fill="none" stroke="${INK}" stroke-width="${1.8 * s}" stroke-linecap="round"/>`;
+  const blushOpacity = [0.15, 0.2, 0.3, 0.4, 0.5][mood - 1];
+  const cheeks = [-13, 13].map((dx) => `<ellipse cx="${cx + dx * s}" cy="${cy + 2.5 * s}" rx="${3.4 * s}" ry="${2.1 * s}" fill="#E39A88" opacity="${blushOpacity}"/>`).join('');
+  return `<g opacity=".88">${cheeks}${brows}${eyes}${mouth}</g>`;
+}
+
+function flower(cx, cy, r) {
+  const petals = Array.from({ length: 5 }, (_, i) => {
+    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    return `<circle cx="${cx + Math.cos(a) * r}" cy="${cy + Math.sin(a) * r}" r="${r * 0.85}" fill="${PETAL}"/>`;
+  }).join('');
+  return `${petals}<circle cx="${cx}" cy="${cy}" r="${r * 0.7}" fill="${POLLEN}"/>`;
+}
+
+const shadow = (cx, y, rx) => `<ellipse cx="${cx}" cy="${y}" rx="${rx}" ry="3.2" fill="rgba(74,60,40,.13)"/>`;
+
+/* A — Filiz: yuvarlak tohum gövde, tepede yaprak */
+function seed(mood, stage) {
+  const body = MOODS[mood - 1].color;
+  const leafR = `<path d="M50 24 C53 13 63 8 73 10 C71 20 62 26 50 24Z" fill="${LEAF}"/>`;
+  const leafL = `<path d="M50 26 C47 16 38 12 29 14 C31 23 39 28 50 26Z" fill="${LEAF_DARK}"/>`;
+  const stem = `<path d="M50 34 Q49 28 50 22" stroke="${LEAF_DARK}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+  const top = stage === 3 ? `${leafL}${leafR}${flower(50, 15, 4.2)}` : stage === 2 ? `${leafL}${leafR}` : leafR;
+  return `<svg viewBox="0 0 100 100">${shadow(50, 93, 26)}${stem}${top}
+    <path d="M50 32 C71 32 83 47 83 64 C83 81 69 91 50 91 C31 91 17 81 17 64 C17 47 29 32 50 32Z" fill="${body}"/>
+    <ellipse cx="38" cy="46" rx="9" ry="5" fill="#fff" opacity=".22" transform="rotate(-25 38 46)"/>
+    ${face(50, 64, 1, mood)}</svg>`;
+}
+
+/* B — Tomurcuk: damla gövde, yanlarda yapraklar, tepede açan çiçek */
+function bud(mood, stage) {
+  const body = MOODS[mood - 1].color;
+  const leftLeaf = `<path d="M24 84 C9 83 4 72 6 62 C17 64 25 72 24 84Z" fill="${LEAF_DARK}"/>`;
+  const rightLeaf = `<path d="M76 84 C91 83 96 72 94 62 C83 64 75 72 76 84Z" fill="${LEAF}"/>`;
+  const leaves = stage >= 2 ? leftLeaf + rightLeaf : rightLeaf;
+  const crown = stage === 3 ? flower(50, 14, 5) : '';
+  return `<svg viewBox="0 0 100 100">${shadow(50, 94, 28)}${leaves}
+    <path d="M50 14 C62 28 82 44 82 64 C82 81 68 91 50 91 C32 91 18 81 18 64 C18 44 38 28 50 14Z" fill="${body}"/>
+    <ellipse cx="39" cy="48" rx="7" ry="4" fill="#fff" opacity=".22" transform="rotate(-35 39 48)"/>
+    ${crown}${face(50, 66, 1, mood)}</svg>`;
+}
+
+/* C — Saksı: yüz saksıda, bitki seriyle uzuyor */
+function pot(mood, stage) {
+  const body = MOODS[mood - 1].color;
+  const h = [16, 26, 32][stage - 1];
+  const top = 54 - h;
+  const leaves = [];
+  leaves.push(`<path d="M50 ${top + h * 0.55} C56 ${top + h * 0.3} 64 ${top + h * 0.25} 70 ${top + h * 0.3} C66 ${top + h * 0.55} 58 ${top + h * 0.65} 50 ${top + h * 0.55}Z" fill="${LEAF}"/>`);
+  leaves.push(`<path d="M50 ${top + h * 0.7} C44 ${top + h * 0.45} 36 ${top + h * 0.4} 30 ${top + h * 0.45} C34 ${top + h * 0.7} 42 ${top + h * 0.8} 50 ${top + h * 0.7}Z" fill="${LEAF_DARK}"/>`);
+  if (stage >= 2) {
+    leaves.push(`<path d="M50 ${top + 6} C55 ${top} 62 ${top - 2} 67 ${top} C63 ${top + 6} 56 ${top + 9} 50 ${top + 6}Z" fill="${LEAF}"/>`);
+    leaves.push(`<path d="M50 ${top + 10} C45 ${top + 4} 38 ${top + 2} 33 ${top + 4} C37 ${top + 10} 44 ${top + 13} 50 ${top + 10}Z" fill="${LEAF_DARK}"/>`);
+  }
+  const crown = stage === 3 ? flower(50, top - 2, 4.4) : '';
+  return `<svg viewBox="0 0 100 100">${shadow(50, 94, 22)}
+    <path d="M50 54 L50 ${top}" stroke="${LEAF_DARK}" stroke-width="2.4" stroke-linecap="round"/>
+    ${leaves.join('')}${crown}
+    <path d="M27 58 H73 L67 89 Q66.5 92 63 92 H37 Q33.5 92 33 89 Z" fill="${body}"/>
+    <rect x="23" y="51" width="54" height="11" rx="5.5" fill="${body}"/>
+    <rect x="23" y="51" width="54" height="11" rx="5.5" fill="rgba(74,60,40,.08)"/>
+    ${face(50, 75, 0.85, mood)}</svg>`;
+}
+
+const VARIANTS = [
+  { name: 'Filiz', badge: 'Önerim', fn: seed,
+    desc: 'Yuvarlak bir tohum, başında tek yaprak. En sade ve en kolay tanınan seçenek; küçük boyutlarda (alt menü, bildirim ikonu) da okunuyor.',
+    pros: ['Uygulama ikonu olarak da kullanılabilir', 'Yaprak → iki yaprak → çiçek büyümesi çok net', 'Mevcut ruh hali yüzlerinin doğal devamı'] },
+  { name: 'Tomurcuk', badge: 'Daha karakterli', fn: bud,
+    desc: 'Damla biçimli bir tomurcuk; yapraklar kolları gibi duruyor. Daha çok kişilik taşıyor, sarılma ya da el sallama gibi pozlara uygun.',
+    pros: ['Animasyona en elverişli (yapraklar sallanabilir)', '21. günde tepede açan çiçek güçlü bir ödül anı', 'Biraz daha "sevimli", daha az minimal'] },
+  { name: 'Saksı', badge: 'Hikâyeli', fn: pot,
+    desc: 'Yüz saksıda, bitki serinle birlikte uzuyor. "Kendine bakmak bir bitkiyi sulamak gibi" metaforunu en açık anlatan seçenek.',
+    pros: ['Büyüme hikâyesi en güçlü', 'Saksı rengi ruh haline göre değişiyor, bitki hep yeşil', 'Küçük boyutta detay kaybediyor'] },
+];
+
+const STAGES = ['Başlangıç', '7 gün seri', '21 gün seri'];
+
+document.getElementById('variants').innerHTML = VARIANTS.map((v, i) => `
+  <section class="card">
+    <div class="head"><h2>${String.fromCharCode(65 + i)} · ${v.name}</h2><span class="badge">${v.badge}</span></div>
+    <p class="desc">${v.desc}</p>
+    <div class="label">Ruh halleri</div>
+    <div class="row">${MOODS.map((m, k) => `<div class="cell">${v.fn(k + 1, 1)}<span>${m.label}</span></div>`).join('')}</div>
+    <div class="label">Seriyle büyüme</div>
+    <div class="row stages">${STAGES.map((s, k) => `<div class="cell">${v.fn(4, k + 1)}<span>${s}</span></div>`).join('')}</div>
+    <ul class="pros">${v.pros.map((p) => `<li>${p}</li>`).join('')}</ul>
+  </section>`).join('');
+</script>
+</body>
+</html>

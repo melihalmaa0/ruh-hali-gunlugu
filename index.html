@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#EAE7DC">
+  <meta name="description" content="Günlük ruh halini kaydet, haftalık örüntülerini keşfet.">
+  <title>Ruh Hali Günlüğü</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%2210%204%2080%2090%22%3E%3Cg%20data-part%3D%22figure%22%20transform%3D%22translate(0%20-2.50)%22%3E%3Cg%20data-part%3D%22sprout%22%20transform%3D%22rotate(-8.00%2050%2032)%22%3E%3Cpath%20d%3D%22M50%2034%20Q49%2028%2050%2022%22%20stroke%3D%22%235A8F76%22%20stroke-width%3D%222.4%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M50%2024%20C53%2013%2063%208%2073%2010%20C71%2020%2062%2026%2050%2024Z%22%20fill%3D%22%236FA58A%22%2F%3E%3C%2Fg%3E%3Cg%20class%3D%22f-body%22%3E%3Cpath%20data-part%3D%22skin%22%20d%3D%22M50%2032%20C71%2032%2083%2047%2083%2064%20C83%2081%2069%2091%2050%2091%20C31%2091%2017%2081%2017%2064%20C17%2047%2029%2032%2050%2032Z%22%20fill%3D%22rgb(191%2C220%2C194)%22%2F%3E%3Cellipse%20cx%3D%2238%22%20cy%3D%2246%22%20rx%3D%229%22%20ry%3D%225%22%20fill%3D%22%23fff%22%20opacity%3D%22.22%22%20transform%3D%22rotate(-25%2038%2046)%22%2F%3E%3Cg%20opacity%3D%22.88%22%20fill%3D%22none%22%20stroke%3D%22%232A302B%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%3E%3Cg%20data-part%3D%22blush%22%20opacity%3D%220.4%22%20stroke%3D%22none%22%20fill%3D%22%23E39A88%22%3E%3Cellipse%20cx%3D%2237%22%20cy%3D%2266.5%22%20rx%3D%223.4%22%20ry%3D%222.1%22%2F%3E%3Cellipse%20cx%3D%2263%22%20cy%3D%2266.5%22%20rx%3D%223.4%22%20ry%3D%222.1%22%2F%3E%3C%2Fg%3E%3Cg%20data-part%3D%22brows%22%20opacity%3D%220%22%20stroke-width%3D%221.6%22%3E%3Cpath%20d%3D%22M39%2056%20L45%2054%22%2F%3E%3Cpath%20d%3D%22M61%2056%20L55%2054%22%2F%3E%3C%2Fg%3E%3Cg%20data-part%3D%22dots%22%20opacity%3D%221%22%20stroke%3D%22none%22%20fill%3D%22%232A302B%22%3E%3Ccircle%20cx%3D%2242%22%20cy%3D%2261%22%20r%3D%222.3%22%2F%3E%3Ccircle%20cx%3D%2258%22%20cy%3D%2261%22%20r%3D%222.3%22%2F%3E%3C%2Fg%3E%3Cg%20data-part%3D%22arcs%22%20opacity%3D%220%22%3E%3Cpath%20d%3D%22M39%2062%20Q42%2058%2045%2062%22%2F%3E%3Cpath%20d%3D%22M55%2062%20Q58%2058%2061%2062%22%2F%3E%3C%2Fg%3E%3Cpath%20data-part%3D%22mouth%22%20d%3D%22M44.50%2067.80%20Q50%2071.40%2055.50%2067.80%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Fraunces:opsz,wght,SOFT@9..144,400..600,0..100&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <main id="view" class="view" tabindex="-1"></main>
+  </div>
+
+  <nav class="tabbar" aria-label="Ana menü">
+    <div class="tabbar-inner">
+      <a class="tab" href="#bugun" data-view="today">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>
+        <span>Bugün</span>
+      </a>
+      <a class="tab" href="#icgoru" data-view="insights">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/></svg>
+        <span>İçgörü</span>
+      </a>
+      <a class="tab" href="#gecmis" data-view="history">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+        <span>Geçmiş</span>
+      </a>
+    </div>
+  </nav>
+
+  <button id="notes-toggle" class="notes-toggle" type="button" aria-pressed="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.01"/></svg>
+    <span>Ürün notları</span>
+  </button>
+
+  <div id="note-sheet" class="note-sheet" role="dialog" aria-modal="false" aria-labelledby="note-title" hidden>
+    <div class="note-card">
+      <div class="note-head">
+        <span class="note-num" id="note-num"></span>
+        <span class="eyebrow">Ürün notu</span>
+        <button class="icon-btn note-close" type="button" data-close-note aria-label="Notu kapat">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <h3 id="note-title"></h3>
+      <div id="note-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="product.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
