@@ -805,9 +805,6 @@ if (typeof document !== 'undefined') {
     const hasData = all.length > 0;
     const remaining = all.length - recent.length;
 
-    const sampleLabel = ui.armed === 'sample' ? 'Mevcut kayıtlar silinecek, onayla' : 'Örnek veri yükle';
-    const clearLabel = ui.armed === 'clear' ? 'Emin misin? Tekrar dokun' : 'Tüm verileri sil';
-
     return `
       <header class="top"><p class="eyebrow">${Object.keys(state.entries).length} kayıt</p></header>
       <h1 class="title">Geçmiş</h1>
@@ -829,19 +826,54 @@ if (typeof document !== 'undefined') {
       ${hasData
         ? `<ul class="entries">${recent.map((e) => entryCard(e)).join('')}</ul>
            ${remaining > 0 ? `<button class="btn btn-quiet btn-sm btn-block more-btn" data-action="more">Daha fazla göster (${remaining})</button>` : ''}`
-        : `<div class="card empty"><div class="empty-filiz">${filizSvg(3)}</div><h3>Henüz kayıt yok</h3><p>Bugün ekranından ilk kaydını ekleyebilir ya da örnek veriyle uygulamayı deneyebilirsin.</p></div>`}
+        : `<div class="card empty">
+             <div class="empty-filiz">${filizSvg(3)}</div>
+             <h3>Henüz kayıt yok</h3>
+             <p>Bugün ekranından ilk kaydını ekleyebilir ya da örnek veriyle uygulamayı deneyebilirsin.</p>
+             <button class="btn btn-ghost btn-sm" data-action="sample">Örnek veriyle dene</button>
+           </div>`}`;
+  }
 
+  /* ---------- Ayarlar ---------- */
+
+  function renderSettings() {
+    const count = Object.keys(state.entries).length;
+    const sampleLabel = ui.armed === 'sample' ? 'Mevcut kayıtlar silinecek, onayla' : 'Örnek veri yükle';
+    const clearLabel = ui.armed === 'clear' ? 'Emin misin? Tekrar dokun' : 'Tüm verileri sil';
+    const arrow = chevron('right');
+
+    return `
+      <header class="top"><p class="eyebrow">Uygulama</p></header>
+      <h1 class="title">Ayarlar</h1>
+
+      <h2 class="section-title">Ürün çalışması</h2>
+      <section class="card settings-list">
+        <p class="settings-intro">Bu uygulama uçtan uca bir ürün çalışması. Kararların gerekçelerini, metrikleri ve deneyleri buradan inceleyebilirsin.</p>
+        <a class="settings-row" href="#panel">
+          <span><strong>Ürün paneli</strong><small>Metrikler, huni, A/B deneyi, yol haritası</small></span>${arrow}
+        </a>
+        <button class="settings-row" type="button" role="switch" aria-checked="${ui.notesOn}" data-action="toggle-notes">
+          <span><strong>Ürün notları</strong><small>Ekranlarda kararları açıklayan numaralı noktalar</small></span>
+          <i class="switch" aria-hidden="true"></i>
+        </button>
+        <a class="settings-row" href="#hosgeldin">
+          <span><strong>Karşılama ekranı</strong><small>İlk açılış deneyimini yeniden gör</small></span>${arrow}
+        </a>
+      </section>
+
+      <h2 class="section-title">Demo ve veriler ${pnote('privacy')}</h2>
       <section class="card data-tools">
-        <h2 class="section-title" style="margin-top:0">Demo ve veriler ${pnote('privacy')}</h2>
-        <p>Uygulamayı denemek için 3 haftalık örnek veri yükleyebilirsin. Kayıtların yalnızca bu tarayıcıda saklanır, hiçbir sunucuya gönderilmez.</p>
+        <p>${count ? `Bu tarayıcıda <strong>${count} kayıt</strong> var.` : 'Henüz kayıt yok.'} Uygulamayı denemek için 3 haftalık örnek veri yükleyebilirsin.</p>
         <div class="row">
-          <a class="btn btn-sm btn-ghost" href="#panel">Ürün paneli</a>
-          <a class="btn btn-sm btn-quiet" href="#hosgeldin">Karşılama ekranı</a>
-        </div>
-        <div class="row" style="margin-top:8px">
           <button class="btn btn-sm ${ui.armed === 'sample' ? 'btn-primary' : 'btn-ghost'}" data-action="sample">${sampleLabel}</button>
-          ${hasData ? `<button class="btn btn-sm ${ui.armed === 'clear' ? 'btn-danger-armed' : 'btn-quiet'}" data-action="clear">${clearLabel}</button>` : ''}
+          ${count ? `<button class="btn btn-sm ${ui.armed === 'clear' ? 'btn-danger-armed' : 'btn-quiet'}" data-action="clear">${clearLabel}</button>` : ''}
         </div>
+      </section>
+
+      <h2 class="section-title">Gizlilik</h2>
+      <section class="card settings-about">
+        <p>Kayıtların yalnızca bu cihazda, bu tarayıcıda saklanır. Hesap yok, hiçbir sunucuya veri gönderilmez.</p>
+        <p class="muted small">Ruh Hali Günlüğü · Sürüm 1.0</p>
       </section>`;
   }
 
@@ -912,8 +944,8 @@ if (typeof document !== 'undefined') {
 
   /* ---------- Yönlendirme ve çizim ---------- */
 
-  const ROUTES = { bugun: 'today', icgoru: 'insights', gecmis: 'history', hosgeldin: 'welcome', panel: 'panel' };
-  const RENDER = { today: renderToday, insights: renderInsights, history: renderHistory, welcome: renderWelcome, panel: renderPanel };
+  const ROUTES = { bugun: 'today', icgoru: 'insights', gecmis: 'history', ayarlar: 'settings', hosgeldin: 'welcome', panel: 'panel' };
+  const RENDER = { today: renderToday, insights: renderInsights, history: renderHistory, settings: renderSettings, welcome: renderWelcome, panel: renderPanel };
   const STANDALONE = ['welcome', 'panel']; // Alt menü ve not düğmesi olmadan gösterilen ekranlar
 
   function render({ enter = false } = {}) {
@@ -998,6 +1030,9 @@ if (typeof document !== 'undefined') {
     },
     note(el) {
       openNote(el.dataset.note);
+    },
+    'toggle-notes'() {
+      setNotes(!ui.notesOn);
     },
     'welcome-try'() {
       markWelcomed();

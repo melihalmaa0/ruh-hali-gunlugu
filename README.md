@@ -14,7 +14,7 @@ npx serve .
 python -m http.server 8000
 ```
 
-İlk açılışta karşılama ekranı iki yol sunar: **Uygulamayı dene** (3 haftalık örnek veriyle dolu bir günlük) ve **Ürün kararlarını incele** (ürün paneli). Örnek veri sonradan **Geçmiş → Demo ve veriler** bölümünden de yüklenebilir.
+İlk açılışta karşılama ekranı iki yol sunar: **Uygulamayı dene** (3 haftalık örnek veriyle dolu bir günlük) ve **Ürün kararlarını incele** (ürün paneli). Örnek veri, ürün paneli, ürün notları ve karşılama ekranına sonradan **Ayarlar** sekmesinden ulaşılabilir.
 
 ## Ürün katmanı
 

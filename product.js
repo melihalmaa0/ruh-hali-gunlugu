@@ -326,7 +326,7 @@ function roadmapHtml() {
     </div>`;
 }
 
-const SCREEN_LABELS = { today: 'Bugün', insights: 'İçgörü', history: 'Geçmiş', panel: 'Ürün paneli', welcome: 'Karşılama', edit: 'Geçmiş günü düzenleme' };
+const SCREEN_LABELS = { today: 'Bugün', insights: 'İçgörü', history: 'Geçmiş', settings: 'Ayarlar', panel: 'Ürün paneli', welcome: 'Karşılama', edit: 'Geçmiş günü düzenleme' };
 const METHOD_LABELS = { drag: 'sürükleyerek', tap: 'dokunarak', keyboard: 'klavyeyle' };
 
 function describeEvent(e) {
