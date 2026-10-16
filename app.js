@@ -557,7 +557,7 @@ if (typeof document !== 'undefined') {
         const reg = await navigator.serviceWorker.ready;
         reg.showNotification('Bugün nasıldın?', {
           body: 'Pip seni bekliyor. 10 saniyelik kaydın yeter.',
-          icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', tag: 'daily-reminder',
+          icon: 'icons/pip-192.png', badge: 'icons/pip-192.png', tag: 'daily-reminder',
         });
         analytics.track('reminder_fired', { channel: 'notification' });
       }

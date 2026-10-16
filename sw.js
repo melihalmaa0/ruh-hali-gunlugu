@@ -4,7 +4,7 @@
    Dosyalar değişince CACHE sürümünü artır. */
 'use strict';
 
-const CACHE = 'ruh-hali-v2';
+const CACHE = 'ruh-hali-v3';
 const SHELL = [
   './',
   'index.html',
@@ -12,9 +12,9 @@ const SHELL = [
   'product.js',
   'app.js',
   'manifest.webmanifest',
-  'icons/icon-192.png',
-  'icons/icon-512.png',
-  'icons/apple-touch-icon.png',
+  'icons/pip-192.png',
+  'icons/pip-512.png',
+  'icons/pip-180.png',
 ];
 
 self.addEventListener('install', (ev) => {
